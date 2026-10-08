@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="TruckGo.Api.Tests/TruckGo.Api.Tests.csproj" />
+  <Project Path="TruckGo.Api/TruckGo.Api.csproj" />
+</Solution>

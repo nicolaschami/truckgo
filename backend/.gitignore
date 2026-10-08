@@ -1,0 +1,11 @@
+# .NET build output
+bin/
+obj/
+
+# IDE
+.vs/
+*.user
+*.suo
+
+# Local secrets never go in git (use "dotnet user-secrets")
+appsettings.*.local.json

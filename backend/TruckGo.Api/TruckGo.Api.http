@@ -1,0 +1,26 @@
+# Try the API from VS Code (REST Client extension) or Visual Studio.
+# Start it first:  dotnet run --project backend/TruckGo.Api
+
+@api = http://localhost:5000/api/v1
+
+### Log in (demo driver)
+# @name login
+POST {{api}}/auth/login
+Content-Type: application/json
+
+{ "username": "test1", "pin": "1234", "deviceId": "dev-pc" }
+
+###
+@token = {{login.response.body.accessToken}}
+
+### Trucks and trailers
+GET {{api}}/vehicles
+Authorization: Bearer {{token}}
+
+### Deliveries of the demo truck
+GET {{api}}/trucks/AB-1234/deliveries
+Authorization: Bearer {{token}}
+
+### One delivery, with its 1st and 2nd weight
+GET {{api}}/deliveries/QN2/421987
+Authorization: Bearer {{token}}
