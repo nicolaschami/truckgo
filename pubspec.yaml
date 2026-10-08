@@ -1,0 +1,53 @@
+name: truckg
+description: "A new Flutter project."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.13.5
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  country_picker: ^2.0.28
+  another_flushbar: ^2.2.4
+  permission_handler: ^12.0.1
+  url_launcher: ^6.3.3
+  flutter_map: ^8.3.2
+  latlong2: ^0.10.1
+  http: ^1.6.0
+  geolocator: ^14.1.1
+  sqflite: ^2.4.4+1
+  path: ^1.9.1
+  flutter_local_notifications: ^22.3.1
+  share_plus: ^13.3.1
+  path_provider: ^2.1.6
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
+  sqflite_common_ffi: ^2.4.3
+  
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/backlogin.png
+    - assets/images/truck_logo.png
+    
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon/app_icon.png"
+  remove_alpha_ios: true
+  adaptive_icon_background: "#0B5791"
+  adaptive_icon_foreground: "assets/icon/app_icon_foreground.png"
+  # The foreground image already has the right margin (truck at 59% width);
+  # the default 16% inset would shrink it further.
+  adaptive_icon_foreground_inset: 0

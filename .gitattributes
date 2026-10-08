@@ -1,0 +1,7 @@
+# Let git normalise line endings (the project is edited on Windows)
+* text=auto
+
+# Never touch binary files
+*.png binary
+*.jpg binary
+*.jar binary
