@@ -1,0 +1,97 @@
+@page "/customers"
+@inject CustomerQueries Queries
+@inject NavigationManager Nav
+
+@* SCREEN 1a — Customer list (docs/back-office-design.md).
+   Customers (sold-to) as received from the client's system. View only:
+   search, "active only", and a click opens the customer. *@
+
+<PageTitle>Customers · TruckGo</PageTitle>
+
+<PageHeader Title="Customers" Subtitle="Your customers and their delivery places (ship-tos), as received from your system." />
+
+<div class="stat-row">
+    <StatTile Icon="@Icons.Material.Rounded.Storefront" Label="Customers" Value="@(_rows?.Count ?? 0)" Color="#2563EB" />
+    <StatTile Icon="@Icons.Material.Rounded.CheckCircle" Label="Active" Value="@(_rows?.Count(c => c.IsActive) ?? 0)" Color="#16A34A" />
+    <StatTile Icon="@Icons.Material.Rounded.Place" Label="Ship-tos" Value="@(_rows?.Sum(c => c.ShipToCount) ?? 0)" Color="#F59E0B" />
+    <StatTile Icon="@Icons.Material.Rounded.Block" Label="Inactive" Value="@(_rows?.Count(c => !c.IsActive) ?? 0)" Color="#64748B" />
+</div>
+
+<MudPaper Class="card" Elevation="0">
+    <div class="card-toolbar">
+        <MudTextField @bind-Value="_search" Placeholder="Search code, name or city" Immediate="true" Clearable="true"
+                      Variant="Variant.Outlined" Margin="Margin.Dense"
+                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Rounded.Search" Class="search-box" />
+        <MudSpacer />
+        <MudSwitch @bind-Value="_activeOnly" Color="Color.Primary" Label="Active only" />
+    </div>
+
+    <MudTable Items="Visible" Hover="true" Elevation="0" Loading="@(_rows is null)" Breakpoint="Breakpoint.Sm"
+              Class="clean-table clickable-rows" OnRowClick="@((TableRowClickEventArgs<CustomerRow> e) => Open(e.Item!))">
+        <HeaderContent>
+            <MudTh>Customer</MudTh>
+            <MudTh>City</MudTh>
+            <MudTh Style="text-align:center">Ship-tos</MudTh>
+            <MudTh>Last received</MudTh>
+            <MudTh>Status</MudTh>
+            <MudTh></MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Customer">
+                <div class="person">
+                    <span class="code-chip">@context.Code</span>
+                    <span class="person-name">@context.Name</span>
+                </div>
+            </MudTd>
+            <MudTd DataLabel="City">@Show.Line(context.City, context.Country)</MudTd>
+            <MudTd DataLabel="Ship-tos" Style="text-align:center">
+                <span class="count-pill">@context.ShipToCount</span>
+            </MudTd>
+            <MudTd DataLabel="Last received">
+                <MudTooltip Text="@Show.DateTime(context.LastReceivedAt)">
+                    <span class="muted">@Show.Ago(context.LastReceivedAt)</span>
+                </MudTooltip>
+            </MudTd>
+            <MudTd DataLabel="Status">
+                @if (context.IsActive) { <span class="badge badge-green">Active</span> }
+                else { <span class="badge badge-gray">Inactive</span> }
+            </MudTd>
+            <MudTd Style="text-align:right">
+                <MudIcon Icon="@Icons.Material.Rounded.ChevronRight" Class="row-arrow" />
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent>
+            <div class="empty-table">
+                <MudIcon Icon="@Icons.Material.Rounded.SearchOff" Size="Size.Large" />
+                <div>No customer matches.</div>
+            </div>
+        </NoRecordsContent>
+    </MudTable>
+</MudPaper>
+
+<ReceivedNote />
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState> AuthState { get; set; } = default!;
+
+    private List<CustomerRow>? _rows;
+    private string _search = "";
+    private bool _activeOnly = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // A SuperAdmin has no company and so no customers to show
+        var company = (await AuthState).User.CompanyId();
+        _rows = company is { } id ? await Queries.ListAsync(id) : [];
+    }
+
+    // The rows after the search box and the "active only" switch
+    private IEnumerable<CustomerRow> Visible => (_rows ?? [])
+        .Where(c => !_activeOnly || c.IsActive)
+        .Where(c => string.IsNullOrWhiteSpace(_search)
+            || c.Code.Contains(_search, StringComparison.OrdinalIgnoreCase)
+            || c.Name.Contains(_search, StringComparison.OrdinalIgnoreCase)
+            || (c.City ?? "").Contains(_search, StringComparison.OrdinalIgnoreCase));
+
+    private void Open(CustomerRow row) => Nav.NavigateTo($"/customers/{row.Id}");
+}

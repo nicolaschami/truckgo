@@ -1,0 +1,14 @@
+@* A tidy list of "label: value" lines for a details card. Empty values show
+   a dash, so a missing field is visible instead of the line disappearing. *@
+
+<dl class="info-list">
+    @foreach (var (label, value) in Items)
+    {
+        <dt>@label</dt>
+        <dd>@(string.IsNullOrWhiteSpace(value) ? "—" : value)</dd>
+    }
+</dl>
+
+@code {
+    [Parameter, EditorRequired] public IEnumerable<(string Label, string? Value)> Items { get; set; } = [];
+}

@@ -1,0 +1,44 @@
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+@* A map with places (ship-tos, plants) and their geofence circles.
+   Drawn by Leaflet in the browser (wwwroot/app.js, truckgo.showMap). *@
+
+<div id="@_id" class="map-view" style="height:@(Height)px"></div>
+
+@code {
+    /// <summary>A place on the map. Kind "site" is amber, "plant" is blue; inactive places are grey.</summary>
+    public sealed record Place(double Lat, double Lng, string Label, string Kind = "site", bool Active = true, string? Url = null);
+
+    [Parameter, EditorRequired] public IReadOnlyList<Place> Places { get; set; } = [];
+
+    /// <summary>The geofence radius in metres (the company setting).</summary>
+    [Parameter] public double RadiusM { get; set; } = 200;
+
+    [Parameter] public int Height { get; set; } = 320;
+
+    private readonly string _id = "map-" + Guid.NewGuid().ToString("N")[..8];
+    private IReadOnlyList<Place>? _drawn;
+
+    // Draw once the element exists in the browser, and again if the places change
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (ReferenceEquals(_drawn, Places)) return;
+        _drawn = Places;
+        await JS.InvokeVoidAsync("truckgo.showMap", _id,
+            Places.Select(p => new { lat = p.Lat, lng = p.Lng, label = p.Label, kind = p.Kind, active = p.Active, url = p.Url }),
+            RadiusM);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("truckgo.removeMap", _id);
+        }
+        catch (JSDisconnectedException)
+        {
+            // The browser tab is already closed: nothing to clean up
+        }
+    }
+}

@@ -1,0 +1,13 @@
+@* The way back to the page above (ship-to → its customer → the list).
+   A real button, above the page title, the same on every detail page. *@
+
+<MudButton Href="@Href" Variant="Variant.Text" Color="Color.Primary" Class="back-button"
+           StartIcon="@Icons.Material.Rounded.ArrowBack">@Text</MudButton>
+
+@code {
+    /// <summary>The page to go back to, e.g. "/customers".</summary>
+    [Parameter, EditorRequired] public string Href { get; set; } = "/";
+
+    /// <summary>Where it goes, in words, e.g. "Customers" or the customer's name.</summary>
+    [Parameter, EditorRequired] public string Text { get; set; } = "Back";
+}

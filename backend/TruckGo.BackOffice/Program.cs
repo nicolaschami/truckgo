@@ -6,6 +6,7 @@ using TruckGo.Admin;
 using TruckGo.BackOffice.Components;
 using TruckGo.BackOffice.Security;
 using TruckGo.Data;
+using TruckGo.Queries;
 
 // ============================================================================
 // TruckGo back office — the web site the office uses (Blazor Server).
@@ -24,6 +25,9 @@ builder.Services.AddDbContextFactory<TruckGoDb>(o =>
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<UserAdmin>();
 builder.Services.AddScoped<SettingsAdmin>();
+
+// What the screens show (TruckGo.Core/Queries), read only
+builder.Services.AddScoped<CustomerQueries>();
 
 // LOGIN: a cookie, kept for a working day and renewed while the user is active
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)

@@ -1,0 +1,148 @@
+@page "/customers/ship-tos/{Id:guid}"
+@using System.Globalization
+@inject CustomerQueries Queries
+
+@* SCREEN 1c — One ship-to (docs/back-office-design.md): where it is (map
+   with its geofence), who to call, the standing delivery instructions, and
+   its recent deliveries. View only. *@
+
+<PageTitle>@(_shipTo?.Name ?? "Ship-to") · TruckGo</PageTitle>
+
+@* Back to the ship-to's customer (or to the list while loading / not found) *@
+<BackButton Href="@(_shipTo is { } back ? $"/customers/{back.CustomerId}" : "/customers")"
+            Text="@(_shipTo?.CustomerName ?? "Customers")" />
+
+@if (_notFound)
+{
+    <MudAlert Severity="Severity.Warning">This ship-to does not exist.</MudAlert>
+}
+else if (_shipTo is not { } s)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else
+{
+    <div class="page-header">
+        <div>
+            <div class="title-row">
+                <MudText Typo="Typo.h5" HtmlTag="h1">@s.Name</MudText>
+                <span class="code-chip">@s.Code</span>
+                @if (s.IsActive) { <span class="badge badge-green">Active</span> }
+                else { <span class="badge badge-gray">Inactive</span> }
+            </div>
+            <MudText Typo="Typo.body2" Class="mt-1 muted">
+                Ship-to of <a href="/customers/@s.CustomerId" class="link">@s.CustomerName</a> · @Show.Line(s.Address, s.City)
+            </MudText>
+        </div>
+        <div class="page-actions">
+            <MudButton Href="@GoogleMapsUrl(s)" Target="_blank" Variant="Variant.Outlined" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Rounded.Directions">Open in Google Maps</MudButton>
+        </div>
+    </div>
+
+    @* The instructions matter most to the people planning: shown first, in amber *@
+    @if (!string.IsNullOrWhiteSpace(s.DeliveryInstructions))
+    {
+        <div class="instructions">
+            <MudIcon Icon="@Icons.Material.Rounded.Campaign" />
+            <div>
+                <strong>Delivery instructions</strong>
+                <div>@s.DeliveryInstructions</div>
+            </div>
+        </div>
+    }
+
+    <div class="detail-grid">
+        @* ---- Details ---- *@
+        <MudPaper Class="card pad" Elevation="0">
+            <div class="card-title"><MudIcon Icon="@Icons.Material.Rounded.Place" /> Ship-to details</div>
+
+            @if (s.ContactName is not null || s.ContactPhone is not null)
+            {
+                <div class="contact">
+                    <Initials Name="@(s.ContactName ?? "?")" />
+                    <div>
+                        <div class="person-name">@(s.ContactName ?? "Site contact")</div>
+                        @if (s.ContactPhone is { } phone)
+                        {
+                            <a href="tel:@phone.Replace(" ", "")" class="link">@phone</a>
+                        }
+                    </div>
+                </div>
+            }
+
+            <InfoList Items="@([
+                ("Address", Show.Line(s.Address, s.Postcode, s.City)),
+                ("Country", s.Country),
+                ("Opening hours", s.OpeningHours),
+                ("Coordinates", $"{s.Latitude.ToString("0.00000", CultureInfo.InvariantCulture)}, {s.Longitude.ToString("0.00000", CultureInfo.InvariantCulture)}"),
+                ("Last received", Show.DateTime(s.LastReceivedAt)),
+            ])" />
+            <ExtraInfo Values="s.Extra" />
+        </MudPaper>
+
+        @* ---- Map ---- *@
+        <MudPaper Class="card" Elevation="0">
+            <div class="card-title pad-x"><MudIcon Icon="@Icons.Material.Rounded.Map" /> Location
+                <span class="muted card-title-note">circle = geofence (@s.GeofenceRadiusM.ToString("0") m)</span>
+            </div>
+            <MapView Places="_places" RadiusM="s.GeofenceRadiusM" Height="330" />
+        </MudPaper>
+    </div>
+
+    @* ---- Recent deliveries ---- *@
+    <MudPaper Class="card mt-5" Elevation="0">
+        <div class="card-toolbar">
+            <div class="card-title"><MudIcon Icon="@Icons.Material.Rounded.ReceiptLong" /> Recent deliveries</div>
+            <MudSpacer />
+            <span class="muted">Last @CustomerQueries.RecentDeliveryCount, newest first</span>
+        </div>
+        <MudTable Items="s.RecentDeliveries" Hover="true" Elevation="0" Breakpoint="Breakpoint.Sm" Class="clean-table">
+            <HeaderContent>
+                <MudTh>Delivery</MudTh>
+                <MudTh>Planned</MudTh>
+                <MudTh>Material</MudTh>
+                <MudTh Style="text-align:right">Ordered</MudTh>
+                <MudTh>Truck</MudTh>
+                <MudTh>Status</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Delivery"><span class="code-chip">@context.PlantCode / @context.Number</span></MudTd>
+                <MudTd DataLabel="Planned">@Show.DateTime(context.ScheduledAt)</MudTd>
+                <MudTd DataLabel="Material">@context.Material</MudTd>
+                <MudTd DataLabel="Ordered" Style="text-align:right">@Show.Tonnes(context.OrderedTons)</MudTd>
+                <MudTd DataLabel="Truck">@(context.TruckPlate ?? "—")</MudTd>
+                <MudTd DataLabel="Status"><span class="badge @Show.StatusBadge(context.Status)">@Show.Status(context.Status)</span></MudTd>
+            </RowTemplate>
+            <NoRecordsContent>
+                <div class="empty-table">No delivery to this ship-to yet.</div>
+            </NoRecordsContent>
+        </MudTable>
+    </MudPaper>
+
+    <ReceivedNote LastReceivedAt="s.LastReceivedAt" />
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+    [CascadingParameter] private Task<AuthenticationState> AuthState { get; set; } = default!;
+
+    private ShipToDetail? _shipTo;
+    private bool _notFound;
+    private IReadOnlyList<MapView.Place> _places = [];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var company = (await AuthState).User.CompanyId();
+        _shipTo = company is { } id ? await Queries.GetShipToAsync(id, Id) : null;
+        _notFound = _shipTo is null;
+        if (_shipTo is not { } s) return;
+
+        _places = [new MapView.Place(s.Latitude, s.Longitude, s.Name, "site", s.IsActive)];
+    }
+
+    // Google Maps at the ship-to's exact point (works on a phone too)
+    private static string GoogleMapsUrl(ShipToDetail s) =>
+        "https://www.google.com/maps/search/?api=1&query=" +
+        s.Latitude.ToString(CultureInfo.InvariantCulture) + "," + s.Longitude.ToString(CultureInfo.InvariantCulture);
+}

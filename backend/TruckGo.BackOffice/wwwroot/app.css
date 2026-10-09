@@ -538,3 +538,239 @@ body {
 .sidebar.mud-drawer--closed .side-nav .mud-nav-link .mud-nav-link-icon {
     margin: 0;
 }
+
+/* --------------------------------------------------------------------------
+   Master-data screens: lists, detail pages, maps (Customers, later Plants...)
+   -------------------------------------------------------------------------- */
+
+/* "Customers / Northgate / Riverside" above the title */
+.crumbs {
+    padding: 0 0 6px !important;
+    font-size: .82rem;
+}
+
+.crumbs a {
+    color: var(--tg-blue);
+}
+
+.title-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+/* A code from the client's system: "100245", "QN2 / 421987" */
+.code-chip {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: #F1F5F9;
+    border: 1px solid #E2E8F0;
+    color: #334155;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: .78rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.count-pill {
+    display: inline-block;
+    min-width: 28px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: #FEF3C7;
+    color: #92400E;
+    font-weight: 700;
+    font-size: .8rem;
+    text-align: center;
+}
+
+/* Rows that open a page */
+.clickable-rows .mud-table-body .mud-table-row {
+    cursor: pointer;
+}
+
+.row-arrow {
+    color: #CBD5E1;
+    transition: color .15s, transform .15s;
+}
+
+.clickable-rows .mud-table-row:hover .row-arrow {
+    color: var(--tg-blue);
+    transform: translateX(2px);
+}
+
+/* Details card + map side by side (one column on small screens) */
+.detail-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+    gap: 20px;
+    align-items: start;
+}
+
+@media (max-width: 960px) {
+    .detail-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.card.pad {
+    padding: 20px 22px;
+}
+
+.card-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+    font-weight: 600;
+    font-size: .95rem;
+}
+
+.card-title .mud-icon-root {
+    color: var(--tg-blue);
+    font-size: 1.2rem;
+}
+
+.card-toolbar .card-title {
+    margin-bottom: 0;
+}
+
+.card-title.pad-x {
+    padding: 16px 20px 0;
+}
+
+.card-title-note {
+    margin-left: auto;
+    font-weight: 400;
+    font-size: .78rem;
+}
+
+/* Label / value lines */
+.info-list {
+    display: grid;
+    grid-template-columns: 130px 1fr;
+    gap: 10px 16px;
+    margin: 0;
+}
+
+.info-list dt {
+    color: var(--tg-muted);
+    font-size: .82rem;
+}
+
+.info-list dd {
+    margin: 0;
+    font-weight: 500;
+    overflow-wrap: anywhere;
+}
+
+.extra-info {
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px dashed var(--tg-line);
+}
+
+.extra-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 10px;
+    font-size: .78rem;
+    font-weight: 600;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: #7C3AED;
+}
+
+/* The site contact on a ship-to */
+.contact {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding: 12px;
+    border-radius: 10px;
+    background: #F8FAFC;
+    border: 1px solid var(--tg-line);
+}
+
+.link {
+    color: var(--tg-blue);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.link:hover {
+    text-decoration: underline;
+}
+
+/* Standing delivery instructions, in amber so nobody misses them */
+.instructions {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding: 14px 16px;
+    border-radius: var(--tg-radius);
+    background: #FFFBEB;
+    border: 1px solid #FDE68A;
+    color: #78350F;
+}
+
+.instructions .mud-icon-root {
+    color: var(--tg-amber);
+}
+
+/* "Received from your system — view only" */
+.received-note {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 16px;
+    font-size: .8rem;
+    color: var(--tg-muted);
+}
+
+.map-view {
+    width: 100%;
+    margin-top: 12px;
+    border-top: 1px solid var(--tg-line);
+    background: #E8EEF5;
+    z-index: 0; /* keep Leaflet's layers under menus and dialogs */
+}
+
+.map-view .leaflet-tooltip {
+    font-family: Inter, sans-serif;
+    font-weight: 600;
+}
+
+/* Blazor moves the keyboard focus to the page title after each navigation
+   (good for screen readers); no need to draw a frame around it */
+h1:focus,
+h1:focus-visible {
+    outline: none;
+}
+
+/* The "← Customers" button above a detail page's title */
+.back-button {
+    margin: -6px 0 8px -10px !important;
+    padding: 6px 14px 6px 10px !important;
+    border-radius: 999px !important;
+    background: #EEF2FF !important;
+    color: #1E40AF !important;
+    font-weight: 600 !important;
+    transition: background .15s, transform .15s;
+}
+
+.back-button:hover {
+    background: #DBEAFE !important;
+}
+
+.back-button:hover .mud-button-icon-start {
+    transform: translateX(-2px);
+}
+
+.back-button .mud-button-icon-start {
+    transition: transform .15s;
+}

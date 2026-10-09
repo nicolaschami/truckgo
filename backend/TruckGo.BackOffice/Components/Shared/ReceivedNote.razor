@@ -1,0 +1,14 @@
+@* The small note on master-data screens: this comes from the client's own
+   system and is view only in TruckGo; when it was last received. *@
+
+<div class="received-note">
+    <MudIcon Icon="@Icons.Material.Rounded.SyncAlt" Size="Size.Small" />
+    <span>
+        Received from your system@(LastReceivedAt is { } t ? $" · last update {Show.Ago(t)}" : "")
+        — view only in TruckGo
+    </span>
+</div>
+
+@code {
+    [Parameter] public DateTime? LastReceivedAt { get; set; }
+}

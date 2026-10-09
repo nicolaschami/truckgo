@@ -1,0 +1,22 @@
+@* "Extra info": client-specific named values received from the other
+   system (e.g. "Gate code: 4512"). Shown as they are; nothing if none. *@
+
+@if (Values.Count > 0)
+{
+    <div class="extra-info">
+        <div class="extra-title">
+            <MudIcon Icon="@Icons.Material.Rounded.Sell" Size="Size.Small" /> Extra info
+        </div>
+        <dl class="info-list">
+            @foreach (var (name, value) in Values.OrderBy(v => v.Key))
+            {
+                <dt>@name</dt>
+                <dd>@value</dd>
+            }
+        </dl>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyDictionary<string, string> Values { get; set; } = new Dictionary<string, string>();
+}

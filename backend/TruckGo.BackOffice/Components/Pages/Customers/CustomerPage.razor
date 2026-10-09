@@ -1,0 +1,123 @@
+@page "/customers/{Id:guid}"
+@inject CustomerQueries Queries
+@inject NavigationManager Nav
+
+@* SCREEN 1b — One customer (docs/back-office-design.md): its details, its
+   extra info, a map of all its ship-tos, and the list of ship-tos.
+   View only. *@
+
+<PageTitle>@(_customer?.Name ?? "Customer") · TruckGo</PageTitle>
+
+<BackButton Href="/customers" Text="Customers" />
+
+@if (_notFound)
+{
+    <MudAlert Severity="Severity.Warning">This customer does not exist.</MudAlert>
+}
+else if (_customer is not { } c)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else
+{
+    <div class="page-header">
+        <div>
+            <div class="title-row">
+                <MudText Typo="Typo.h5" HtmlTag="h1">@c.Name</MudText>
+                <span class="code-chip">@c.Code</span>
+                @if (c.IsActive) { <span class="badge badge-green">Active</span> }
+                else { <span class="badge badge-gray">Inactive</span> }
+            </div>
+            <MudText Typo="Typo.body2" Class="mt-1 muted">@Show.Line(c.City, c.Country) · @c.ShipTos.Count ship-to@(c.ShipTos.Count == 1 ? "" : "s")</MudText>
+        </div>
+    </div>
+
+    <div class="detail-grid">
+        @* ---- Details ---- *@
+        <MudPaper Class="card pad" Elevation="0">
+            <div class="card-title"><MudIcon Icon="@Icons.Material.Rounded.Business" /> Customer details</div>
+            <InfoList Items="@([
+                ("Address", Show.Line(c.Address, c.Postcode, c.City)),
+                ("Country", c.Country),
+                ("Phone", c.Phone),
+                ("Tax ID", c.TaxId),
+                ("Last received", Show.DateTime(c.LastReceivedAt)),
+            ])" />
+            <ExtraInfo Values="c.Extra" />
+        </MudPaper>
+
+        @* ---- Map of the ship-tos ---- *@
+        <MudPaper Class="card" Elevation="0">
+            <div class="card-title pad-x"><MudIcon Icon="@Icons.Material.Rounded.Map" /> Ship-tos on the map
+                <span class="muted card-title-note">circles = geofence (@c.GeofenceRadiusM.ToString("0") m)</span>
+            </div>
+            <MapView Places="_places" RadiusM="c.GeofenceRadiusM" Height="300" />
+        </MudPaper>
+    </div>
+
+    @* ---- Ship-tos ---- *@
+    <MudPaper Class="card mt-5" Elevation="0">
+        <div class="card-toolbar">
+            <div class="card-title"><MudIcon Icon="@Icons.Material.Rounded.Place" /> Ship-tos</div>
+        </div>
+        <MudTable Items="c.ShipTos" Hover="true" Elevation="0" Breakpoint="Breakpoint.Sm" Class="clean-table clickable-rows"
+                  OnRowClick="@((TableRowClickEventArgs<ShipToRow> e) => Nav.NavigateTo($"/customers/ship-tos/{e.Item!.Id}"))">
+            <HeaderContent>
+                <MudTh>Ship-to</MudTh>
+                <MudTh>Address</MudTh>
+                <MudTh>Contact</MudTh>
+                <MudTh>Status</MudTh>
+                <MudTh></MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Ship-to">
+                    <div class="person">
+                        <span class="code-chip">@context.Code</span>
+                        <span class="person-name">@context.Name</span>
+                    </div>
+                </MudTd>
+                <MudTd DataLabel="Address">@Show.Line(context.Address, context.City)</MudTd>
+                <MudTd DataLabel="Contact">
+                    @if (context.ContactName is not null)
+                    {
+                        <div>@context.ContactName</div>
+                        <div class="muted">@context.ContactPhone</div>
+                    }
+                    else { <span class="muted">—</span> }
+                </MudTd>
+                <MudTd DataLabel="Status">
+                    @if (context.IsActive) { <span class="badge badge-green">Active</span> }
+                    else { <span class="badge badge-gray">Inactive</span> }
+                </MudTd>
+                <MudTd Style="text-align:right"><MudIcon Icon="@Icons.Material.Rounded.ChevronRight" Class="row-arrow" /></MudTd>
+            </RowTemplate>
+            <NoRecordsContent>
+                <div class="empty-table">This customer has no ship-to yet.</div>
+            </NoRecordsContent>
+        </MudTable>
+    </MudPaper>
+
+    <ReceivedNote LastReceivedAt="c.LastReceivedAt" />
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+    [CascadingParameter] private Task<AuthenticationState> AuthState { get; set; } = default!;
+
+    private CustomerDetail? _customer;
+    private bool _notFound;
+    private IReadOnlyList<MapView.Place> _places = [];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var company = (await AuthState).User.CompanyId();
+        _customer = company is { } id ? await Queries.GetAsync(id, Id) : null;
+        _notFound = _customer is null;
+        if (_customer is not { } c) return;
+
+        // Each ship-to on the map; a click opens its page
+        _places = c.ShipTos
+            .Select(s => new MapView.Place(s.Latitude, s.Longitude, s.Name, "site", s.IsActive, $"/customers/ship-tos/{s.Id}"))
+            .ToList();
+    }
+}
