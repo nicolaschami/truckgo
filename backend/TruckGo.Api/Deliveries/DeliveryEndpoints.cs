@@ -1,7 +1,7 @@
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using TruckGo.Api.Auth;
-using TruckGo.Api.Data;
+using TruckGo.Data;
 
 namespace TruckGo.Api.Deliveries;
 

@@ -2,21 +2,18 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
-using TruckGo.Api.Data;
+using TruckGo.Data;
 
 #nullable disable
 
-namespace TruckGo.Api.Data.Migrations
+namespace TruckGo.Data.Migrations
 {
     [DbContext(typeof(TruckGoDb))]
-    [Migration("20261009190501_InitialCreate")]
-    partial class InitialCreate
+    partial class TruckGoDbModelSnapshot : ModelSnapshot
     {
-        /// <inheritdoc />
-        protected override void BuildTargetModel(ModelBuilder modelBuilder)
+        protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -25,7 +22,7 @@ namespace TruckGo.Api.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("TruckGo.Api.Data.BackOfficeUser", b =>
+            modelBuilder.Entity("TruckGo.Data.BackOfficeUser", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
@@ -75,7 +72,7 @@ namespace TruckGo.Api.Data.Migrations
                     b.ToTable("Users");
                 });
 
-            modelBuilder.Entity("TruckGo.Api.Data.Company", b =>
+            modelBuilder.Entity("TruckGo.Data.Company", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
@@ -96,7 +93,7 @@ namespace TruckGo.Api.Data.Migrations
                     b.ToTable("Companies");
                 });
 
-            modelBuilder.Entity("TruckGo.Api.Data.CompanySettings", b =>
+            modelBuilder.Entity("TruckGo.Data.CompanySettings", b =>
                 {
                     b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid");
@@ -127,7 +124,7 @@ namespace TruckGo.Api.Data.Migrations
                     b.ToTable("Settings");
                 });
 
-            modelBuilder.Entity("TruckGo.Api.Data.Customer", b =>
+            modelBuilder.Entity("TruckGo.Data.Customer", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
@@ -179,7 +176,7 @@ namespace TruckGo.Api.Data.Migrations
                     b.ToTable("Customers");
                 });
 
-            modelBuilder.Entity("TruckGo.Api.Data.Delivery", b =>
+            modelBuilder.Entity("TruckGo.Data.Delivery", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
@@ -261,7 +258,7 @@ namespace TruckGo.Api.Data.Migrations
                     b.ToTable("Deliveries");
                 });
 
-            modelBuilder.Entity("TruckGo.Api.Data.Driver", b =>
+            modelBuilder.Entity("TruckGo.Data.Driver", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
@@ -312,7 +309,7 @@ namespace TruckGo.Api.Data.Migrations
                     b.ToTable("Drivers");
                 });
 
-            modelBuilder.Entity("TruckGo.Api.Data.ForwardingAgent", b =>
+            modelBuilder.Entity("TruckGo.Data.ForwardingAgent", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
@@ -367,7 +364,7 @@ namespace TruckGo.Api.Data.Migrations
                     b.ToTable("ForwardingAgents");
                 });
 
-            modelBuilder.Entity("TruckGo.Api.Data.Plant", b =>
+            modelBuilder.Entity("TruckGo.Data.Plant", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
@@ -422,7 +419,7 @@ namespace TruckGo.Api.Data.Migrations
                     b.ToTable("Plants");
                 });
 
-            modelBuilder.Entity("TruckGo.Api.Data.ShipTo", b =>
+            modelBuilder.Entity("TruckGo.Data.ShipTo", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
@@ -491,7 +488,7 @@ namespace TruckGo.Api.Data.Migrations
                     b.ToTable("ShipTos");
                 });
 
-            modelBuilder.Entity("TruckGo.Api.Data.Vehicle", b =>
+            modelBuilder.Entity("TruckGo.Data.Vehicle", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
@@ -545,7 +542,7 @@ namespace TruckGo.Api.Data.Migrations
                     b.ToTable("Vehicles");
                 });
 
-            modelBuilder.Entity("TruckGo.Api.Data.Weighing", b =>
+            modelBuilder.Entity("TruckGo.Data.Weighing", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
@@ -577,39 +574,39 @@ namespace TruckGo.Api.Data.Migrations
                     b.ToTable("Weighings");
                 });
 
-            modelBuilder.Entity("TruckGo.Api.Data.BackOfficeUser", b =>
+            modelBuilder.Entity("TruckGo.Data.BackOfficeUser", b =>
                 {
-                    b.HasOne("TruckGo.Api.Data.Company", "Company")
+                    b.HasOne("TruckGo.Data.Company", "Company")
                         .WithMany()
                         .HasForeignKey("CompanyId");
 
                     b.Navigation("Company");
                 });
 
-            modelBuilder.Entity("TruckGo.Api.Data.CompanySettings", b =>
+            modelBuilder.Entity("TruckGo.Data.CompanySettings", b =>
                 {
-                    b.HasOne("TruckGo.Api.Data.Company", null)
+                    b.HasOne("TruckGo.Data.Company", null)
                         .WithOne()
-                        .HasForeignKey("TruckGo.Api.Data.CompanySettings", "CompanyId")
+                        .HasForeignKey("TruckGo.Data.CompanySettings", "CompanyId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("TruckGo.Api.Data.Delivery", b =>
+            modelBuilder.Entity("TruckGo.Data.Delivery", b =>
                 {
-                    b.HasOne("TruckGo.Api.Data.Customer", "Customer")
+                    b.HasOne("TruckGo.Data.Customer", "Customer")
                         .WithMany()
                         .HasForeignKey("CustomerId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("TruckGo.Api.Data.Plant", "Plant")
+                    b.HasOne("TruckGo.Data.Plant", "Plant")
                         .WithMany()
                         .HasForeignKey("PlantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("TruckGo.Api.Data.ShipTo", "ShipTo")
+                    b.HasOne("TruckGo.Data.ShipTo", "ShipTo")
                         .WithMany()
                         .HasForeignKey("ShipToId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -622,9 +619,9 @@ namespace TruckGo.Api.Data.Migrations
                     b.Navigation("ShipTo");
                 });
 
-            modelBuilder.Entity("TruckGo.Api.Data.Driver", b =>
+            modelBuilder.Entity("TruckGo.Data.Driver", b =>
                 {
-                    b.HasOne("TruckGo.Api.Data.Company", "Company")
+                    b.HasOne("TruckGo.Data.Company", "Company")
                         .WithMany()
                         .HasForeignKey("CompanyId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -633,9 +630,9 @@ namespace TruckGo.Api.Data.Migrations
                     b.Navigation("Company");
                 });
 
-            modelBuilder.Entity("TruckGo.Api.Data.ShipTo", b =>
+            modelBuilder.Entity("TruckGo.Data.ShipTo", b =>
                 {
-                    b.HasOne("TruckGo.Api.Data.Customer", "Customer")
+                    b.HasOne("TruckGo.Data.Customer", "Customer")
                         .WithMany("ShipTos")
                         .HasForeignKey("CustomerId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -644,9 +641,9 @@ namespace TruckGo.Api.Data.Migrations
                     b.Navigation("Customer");
                 });
 
-            modelBuilder.Entity("TruckGo.Api.Data.Vehicle", b =>
+            modelBuilder.Entity("TruckGo.Data.Vehicle", b =>
                 {
-                    b.HasOne("TruckGo.Api.Data.ForwardingAgent", "ForwardingAgent")
+                    b.HasOne("TruckGo.Data.ForwardingAgent", "ForwardingAgent")
                         .WithMany()
                         .HasForeignKey("ForwardingAgentId")
                         .OnDelete(DeleteBehavior.Restrict);
@@ -654,21 +651,21 @@ namespace TruckGo.Api.Data.Migrations
                     b.Navigation("ForwardingAgent");
                 });
 
-            modelBuilder.Entity("TruckGo.Api.Data.Weighing", b =>
+            modelBuilder.Entity("TruckGo.Data.Weighing", b =>
                 {
-                    b.HasOne("TruckGo.Api.Data.Delivery", null)
+                    b.HasOne("TruckGo.Data.Delivery", null)
                         .WithMany("Weighings")
                         .HasForeignKey("DeliveryId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("TruckGo.Api.Data.Customer", b =>
+            modelBuilder.Entity("TruckGo.Data.Customer", b =>
                 {
                     b.Navigation("ShipTos");
                 });
 
-            modelBuilder.Entity("TruckGo.Api.Data.Delivery", b =>
+            modelBuilder.Entity("TruckGo.Data.Delivery", b =>
                 {
                     b.Navigation("Weighings");
                 });

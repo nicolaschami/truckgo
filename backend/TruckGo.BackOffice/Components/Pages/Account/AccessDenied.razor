@@ -1,0 +1,24 @@
+@page "/access-denied"
+@attribute [Authorize(Policy = Policies.ChangePassword)]
+
+@* Where the login cookie sends a signed-in user who opened a screen their
+   role does not allow (e.g. a Viewer typing /users in the address bar). *@
+
+<PageTitle>No access · TruckGo</PageTitle>
+
+<AuthorizeView Context="auth">
+    @if (auth.User.MustChangePasswordFirst())
+    {
+        @* A temporary password blocks every screen: go and change it *@
+        <RedirectTo Url="/account/change-password" />
+    }
+    else
+    {
+        <MudText Typo="Typo.h5" Class="mb-2">No access</MudText>
+        <MudAlert Severity="Severity.Warning">
+            Your role (@auth.User.FindFirstValue(ClaimTypes.Role)) does not give access to this screen.
+            Ask your company's Admin if you need it.
+        </MudAlert>
+        <MudButton Href="/" Variant="Variant.Text" Class="mt-4">Back to the live board</MudButton>
+    }
+</AuthorizeView>

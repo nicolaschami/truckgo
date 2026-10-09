@@ -1,0 +1,121 @@
+@page "/settings"
+@attribute [Authorize(Policy = Policies.Admin)]
+@using TruckGo.BackOffice.Components.Shared
+@inject SettingsAdmin Admin
+@inject ISnackbar Snackbar
+
+@* SCREEN 5 — Settings (docs/back-office-design.md, section 3).
+   TruckGo's own values for the Admin's company. They are not master data:
+   the other system never sends them. *@
+
+<PageTitle>Settings · TruckGo</PageTitle>
+
+<PageHeader Title="Settings" Subtitle="TruckGo's own values for your company. Changes apply to every truck and screen.">
+    <Actions>
+        <MudButton Variant="Variant.Text" OnClick="LoadAsync" Disabled="_saving">Undo changes</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Rounded.Save"
+                   OnClick="SaveAsync" Disabled="@(_saving || _values is null)" DropShadow="false">Save settings</MudButton>
+    </Actions>
+</PageHeader>
+
+@if (_values is null)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else
+{
+    <div class="settings-grid">
+        @* ---- Geofences and tracking ---- *@
+        <MudPaper Class="card settings-card" Elevation="0">
+            <div class="settings-title">
+                <span class="settings-icon" style="color:#2563EB;background:#2563EB1A"><MudIcon Icon="@Icons.Material.Rounded.MyLocation" /></span>
+                <div>
+                    <MudText Typo="Typo.h6">Geofences and tracking</MudText>
+                    <MudText Typo="Typo.body2" Class="muted">How the app sees plants and ship-tos, and how often it reports.</MudText>
+                </div>
+            </div>
+            <MudNumericField @bind-Value="_values.GeofenceRadiusM" Label="Geofence radius" Variant="Variant.Outlined"
+                             Adornment="Adornment.End" AdornmentText="m"
+                             Min="SettingsAdmin.MinRadiusM" Max="SettingsAdmin.MaxRadiusM" Step="10"
+                             HelperText="One circle size for every plant and ship-to. Entering a plant's circle moves the delivery to “At plant”; entering a ship-to's circle reminds the driver to press “I have arrived”." />
+            <MudNumericField @bind-Value="_values.PositionSendIntervalSeconds" Label="Position send interval" Variant="Variant.Outlined" Class="mt-5"
+                             Adornment="Adornment.End" AdornmentText="seconds"
+                             Min="SettingsAdmin.MinSendIntervalSeconds" Max="SettingsAdmin.MaxSendIntervalSeconds" Step="10"
+                             HelperText="How often the app sends the truck's position. Shorter = a more live map, but more battery and mobile data." />
+        </MudPaper>
+
+        @* ---- Warnings ---- *@
+        <MudPaper Class="card settings-card" Elevation="0">
+            <div class="settings-title">
+                <span class="settings-icon" style="color:#F59E0B;background:#F59E0B1A"><MudIcon Icon="@Icons.Material.Rounded.WarningAmber" /></span>
+                <div>
+                    <MudText Typo="Typo.h6">Warnings</MudText>
+                    <MudText Typo="Typo.body2" Class="muted">Shown on the deliveries, the live board and the map when a limit is passed.</MudText>
+                </div>
+            </div>
+            <div class="two-cols">
+                <MudNumericField @bind-Value="_values.LongWaitAtPlantMinutes" Label="Long wait at the plant" Variant="Variant.Outlined"
+                                 Adornment="Adornment.End" AdornmentText="min" Min="1" Max="SettingsAdmin.MaxWarningMinutes"
+                                 HelperText="At the plant or loading for longer than this." />
+                <MudNumericField @bind-Value="_values.LongWaitAtShipToMinutes" Label="Long wait at the ship-to" Variant="Variant.Outlined"
+                                 Adornment="Adornment.End" AdornmentText="min" Min="1" Max="SettingsAdmin.MaxWarningMinutes"
+                                 HelperText="Arrived or unloading at the customer for longer than this." />
+                <MudNumericField @bind-Value="_values.WindowToleranceMinutes" Label="Delivery window tolerance" Variant="Variant.Outlined"
+                                 Adornment="Adornment.End" AdornmentText="min" Min="0" Max="SettingsAdmin.MaxWarningMinutes"
+                                 HelperText="Arriving outside the window by more than this. 0 = exactly the window." />
+                <MudNumericField @bind-Value="_values.LongStopMinutes" Label="Long unexpected stop" Variant="Variant.Outlined"
+                                 Adornment="Adornment.End" AdornmentText="min" Min="1" Max="SettingsAdmin.MaxWarningMinutes"
+                                 HelperText="Standing still outside the plant and the ship-to." />
+            </div>
+        </MudPaper>
+
+        @* ---- Keeping data ---- *@
+        <MudPaper Class="card settings-card" Elevation="0">
+            <div class="settings-title">
+                <span class="settings-icon" style="color:#0891B2;background:#0891B21A"><MudIcon Icon="@Icons.Material.Rounded.Inventory2" /></span>
+                <div>
+                    <MudText Typo="Typo.h6">Keeping data</MudText>
+                    <MudText Typo="Typo.body2" Class="muted">How long the truck trails stay on the server.</MudText>
+                </div>
+            </div>
+            <MudNumericField @bind-Value="_values.GpsRetentionMonths" Label="Keep GPS positions" Variant="Variant.Outlined"
+                             Adornment="Adornment.End" AdornmentText="months"
+                             Min="SettingsAdmin.MinRetentionMonths" Max="SettingsAdmin.MaxRetentionMonths"
+                             HelperText="Older positions are deleted every night. Deliveries, weights and proofs of delivery are kept for good." />
+        </MudPaper>
+    </div>
+}
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState> AuthState { get; set; } = default!;
+
+    private Guid _company;
+    private CompanySettings? _values; // a copy edited on screen until "Save"
+    private bool _saving;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _company = (await AuthState).User.CompanyId()!.Value;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync() => _values = await Admin.GetAsync(_company);
+
+    private async Task SaveAsync()
+    {
+        _saving = true;
+        try
+        {
+            await Admin.SaveAsync(_company, _values!);
+            Snackbar.Add("Settings saved.", Severity.Success);
+        }
+        catch (AdminException e)
+        {
+            Snackbar.Add(e.Message, Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+}

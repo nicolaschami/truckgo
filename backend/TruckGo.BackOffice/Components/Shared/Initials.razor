@@ -1,0 +1,20 @@
+@* A round avatar with a person's initials ("Demo Admin" → "DA"). The
+   colour comes from the name, so a person keeps the same colour everywhere. *@
+
+<span class="initials @(Small ? "initials-sm" : "")" style="background:@Colour" aria-hidden="true">@Letters</span>
+
+@code {
+    [Parameter, EditorRequired] public string Name { get; set; } = "";
+    [Parameter] public bool Small { get; set; }
+
+    private static readonly string[] Colours =
+        ["#2563EB", "#7C3AED", "#0891B2", "#16A34A", "#EA580C", "#DB2777", "#4F46E5", "#0D9488"];
+
+    private string Letters => string.Concat(Name
+        .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+        .Take(2)
+        .Select(w => char.ToUpperInvariant(w[0])));
+
+    // Same name → same colour (a simple, stable hash; string.GetHashCode changes per run)
+    private string Colour => Colours[Name.Aggregate(0, (h, c) => (h * 31 + c) & 0x7fffffff) % Colours.Length];
+}

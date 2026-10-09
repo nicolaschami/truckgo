@@ -1,4 +1,4 @@
-namespace TruckGo.Api.Data;
+namespace TruckGo.Data;
 
 // ============================================================================
 // TruckGo's own, vendor-neutral data model.

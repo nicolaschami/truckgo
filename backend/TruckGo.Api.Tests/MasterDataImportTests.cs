@@ -2,9 +2,9 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
-using TruckGo.Api.Data;
+using TruckGo.Data;
 using TruckGo.Api.Deliveries;
-using TruckGo.Api.Integration;
+using TruckGo.Integration;
 
 namespace TruckGo.Api.Tests;
 
@@ -129,8 +129,8 @@ public class MasterDataImportTests
         await api.ImportAsync((import, company) => import.SaveVehicleAsync(company,
             new VehicleMessage("TR-1006", "TR-1006", VehicleKind.Trailer, "Box trailer", IsActive: false)));
 
-        var vehicles = await client.GetFromJsonAsync<List<VehicleDto>>("/api/v1/vehicles", Json);
-        Assert.Equal(VehicleStatus.InUse, vehicles!.Single(v => v.Plate == SeedData.DemoTruck).Status);
+        var vehicles = (await client.GetFromJsonAsync<List<VehicleDto>>("/api/v1/vehicles", Json))!;
+        Assert.Equal(VehicleStatus.InUse, vehicles.Single(v => v.Plate == SeedData.DemoTruck).Status);
         Assert.Equal(VehicleStatus.InUse, vehicles.Single(v => v.Plate == SeedData.DemoTrailer).Status);
         Assert.Equal(VehicleStatus.Available, vehicles.Single(v => v.Plate == "TG-5821").Status);
         Assert.DoesNotContain(vehicles, v => v.Plate == "TR-1006");

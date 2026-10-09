@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
-using TruckGo.Api.Data;
+using TruckGo.Data;
 
-namespace TruckGo.Api.Integration;
+namespace TruckGo.Integration;
 
 /// <summary>
 /// THE ONE DOOR for master data into TruckGo: one "save" method per record

@@ -1,0 +1,24 @@
+@* Finds the page for the address and checks the user may open it *@
+<Router AppAssembly="typeof(Program).Assembly" NotFoundPage="typeof(Pages.NotFound)">
+    <Found Context="routeData">
+        <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)">
+            <NotAuthorized>
+                @if (context.User.Identity?.IsAuthenticated != true)
+                {
+                    <RedirectToLogin />
+                }
+                else if (context.User.MustChangePasswordFirst())
+                {
+                    <RedirectTo Url="/account/change-password" />
+                }
+                else
+                {
+                    <MudAlert Severity="Severity.Warning" Class="ma-4">
+                        Your role does not give access to this screen.
+                    </MudAlert>
+                }
+            </NotAuthorized>
+        </AuthorizeRouteView>
+        <FocusOnNavigate RouteData="routeData" Selector="h1" />
+    </Found>
+</Router>

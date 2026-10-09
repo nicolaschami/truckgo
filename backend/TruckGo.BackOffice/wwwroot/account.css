@@ -1,0 +1,543 @@
+/* ==========================================================================
+   TruckGo back office — the login and "new password" pages
+   (Components/Layout/AccountLayout.razor). Plain HTML pages, so all their
+   looks are here. Colours come from the variables in app.css.
+   ========================================================================== */
+
+.account-page {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    min-height: 100vh;
+    background: #fff;
+}
+
+/* --------------------------------------------------------------------------
+   Left: the navy brand panel
+   -------------------------------------------------------------------------- */
+
+.account-hero {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 32px;
+    padding: 40px 56px;
+    overflow: hidden;
+    color: #fff;
+    background:
+        radial-gradient(circle at 90% 8%, rgba(37, 99, 235, .55), transparent 42%),
+        radial-gradient(circle at 0% 100%, rgba(245, 158, 11, .22), transparent 38%),
+        linear-gradient(155deg, #081629 0%, var(--tg-navy) 45%, #13325E 100%);
+}
+
+/* A faint grid over the whole panel, like a map */
+.account-hero::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image:
+        linear-gradient(rgba(255, 255, 255, .035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, .035) 1px, transparent 1px);
+    background-size: 44px 44px;
+    -webkit-mask-image: linear-gradient(180deg, transparent, #000 25%, #000 75%, transparent);
+    mask-image: linear-gradient(180deg, transparent, #000 25%, #000 75%, transparent);
+    pointer-events: none;
+}
+
+.account-hero > * {
+    position: relative;
+}
+
+.hero-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.hero-brand .brand-name {
+    font-size: 1.4rem;
+}
+
+.hero-main {
+    max-width: 560px;
+}
+
+.hero-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 18px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .08);
+    border: 1px solid rgba(255, 255, 255, .12);
+    font-size: .8rem;
+    font-weight: 600;
+    color: #BFDBFE;
+}
+
+.live-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #22C55E;
+    animation: tg-pulse 2s infinite;
+}
+
+.account-hero h2 {
+    margin: 0 0 14px;
+    font-size: clamp(2rem, 3.2vw, 2.9rem);
+    font-weight: 800;
+    line-height: 1.08;
+    letter-spacing: -.03em;
+}
+
+.hero-accent {
+    background: linear-gradient(90deg, #93C5FD, #FBBF24);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+.hero-main > p {
+    margin: 0 0 40px;
+    max-width: 480px;
+    font-size: 1.02rem;
+    line-height: 1.6;
+    color: #CBD5E1;
+}
+
+/* The mini-map card */
+.hero-map {
+    position: relative;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, .04);
+    border: 1px solid rgba(255, 255, 255, .10);
+    box-shadow: 0 30px 60px rgba(0, 0, 0, .35), inset 0 1px 0 rgba(255, 255, 255, .06);
+}
+
+.map-svg {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.geofence {
+    stroke-width: 1.5;
+    stroke-dasharray: 4 5;
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: tg-breathe 3.2s ease-in-out infinite;
+}
+
+.geofence-plant {
+    fill: rgba(96, 165, 250, .10);
+    stroke: rgba(96, 165, 250, .6);
+}
+
+.geofence-site {
+    fill: rgba(245, 158, 11, .10);
+    stroke: rgba(245, 158, 11, .6);
+    animation-delay: 1.6s;
+}
+
+.map-label {
+    font: 600 11px Inter, sans-serif;
+    fill: #94A3B8;
+}
+
+/* Status cards floating over the map */
+.float-card {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, .96);
+    color: var(--tg-text);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, .3);
+    font-size: .78rem;
+    line-height: 1.3;
+}
+
+.float-card strong {
+    display: block;
+    font-size: .82rem;
+}
+
+.float-card span:not(.status-dot) {
+    color: var(--tg-muted);
+}
+
+.float-top {
+    top: -18px;
+    right: 22px;
+    animation: tg-float 6s ease-in-out infinite;
+}
+
+.float-bottom {
+    bottom: -20px;
+    left: 26px;
+    animation: tg-float 6s ease-in-out 3s infinite;
+}
+
+.status-dot {
+    flex: none;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+.status-blue { background: var(--tg-blue); box-shadow: 0 0 0 4px rgba(37, 99, 235, .18); }
+.status-green { background: #22C55E; box-shadow: 0 0 0 4px rgba(34, 197, 94, .18); }
+
+.hero-points {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 44px;
+}
+
+.hero-points span {
+    padding: 7px 12px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .06);
+    border: 1px solid rgba(255, 255, 255, .10);
+    font-size: .8rem;
+    color: #CBD5E1;
+}
+
+.hero-points b {
+    color: #fff;
+    font-weight: 600;
+}
+
+.hero-foot {
+    font-size: .78rem;
+    color: #64748B;
+}
+
+/* --------------------------------------------------------------------------
+   Right: the form
+   -------------------------------------------------------------------------- */
+
+.account-form {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 24px;
+    background:
+        radial-gradient(circle at 100% 0%, rgba(37, 99, 235, .06), transparent 40%),
+        #fff;
+}
+
+.account-card {
+    width: 100%;
+    max-width: 400px;
+}
+
+.account-brand-small {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 28px;
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: var(--tg-navy);
+}
+
+.account-brand-small .brand-mark {
+    width: 34px;
+    height: 34px;
+}
+
+.account-card h1 {
+    margin: 0 0 8px;
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: -.02em;
+}
+
+.account-lead {
+    margin: 0 0 30px;
+    color: var(--tg-muted);
+    font-size: .95rem;
+}
+
+.account-card label {
+    display: block;
+    margin: 18px 0 7px;
+    font-size: .85rem;
+    font-weight: 600;
+    color: #334155;
+}
+
+.account-card label small {
+    font-weight: 400;
+    color: var(--tg-muted);
+}
+
+/* A field with an icon on the left (and the eye on the right for a password) */
+.field {
+    position: relative;
+}
+
+.field-icon {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    width: 18px;
+    height: 18px;
+    transform: translateY(-50%);
+    fill: #94A3B8;
+    pointer-events: none;
+    transition: fill .15s;
+}
+
+.field:focus-within .field-icon {
+    fill: var(--tg-blue);
+}
+
+.account-card input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 13px 14px;
+    font: inherit;
+    font-size: .95rem;
+    color: var(--tg-text);
+    border: 1px solid #CBD5E1;
+    border-radius: 12px;
+    background: #F8FAFC;
+    transition: border-color .15s, box-shadow .15s, background .15s;
+}
+
+.field input {
+    padding-left: 44px;
+}
+
+
+.field input#password {
+    padding-right: 48px;
+}
+
+.account-card input::placeholder {
+    color: #94A3B8;
+}
+
+.account-card input:hover {
+    border-color: #94A3B8;
+}
+
+.account-card input:focus {
+    outline: none;
+    background: #fff;
+    border-color: var(--tg-blue);
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, .15);
+}
+
+.field-eye {
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    transform: translateY(-50%);
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    cursor: pointer;
+}
+
+.field-eye svg {
+    width: 20px;
+    height: 20px;
+    fill: #94A3B8;
+}
+
+.field-eye:hover {
+    background: #EEF2F7;
+}
+
+.field-eye.is-on svg {
+    fill: var(--tg-blue);
+}
+
+.account-card button[type=submit]:not(.link-button) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    margin-top: 30px;
+    padding: 14px;
+    font: inherit;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #fff;
+    background: linear-gradient(180deg, #3B82F6, var(--tg-blue));
+    border: 0;
+    border-radius: 12px;
+    cursor: pointer;
+    box-shadow: 0 10px 24px rgba(37, 99, 235, .30), inset 0 1px 0 rgba(255, 255, 255, .2);
+    transition: transform .12s, box-shadow .12s;
+}
+
+.account-card button[type=submit]:not(.link-button):hover {
+    background: linear-gradient(180deg, var(--tg-blue), var(--tg-blue-dark));
+    box-shadow: 0 14px 28px rgba(37, 99, 235, .35);
+    transform: translateY(-1px);
+}
+
+.account-card button[type=submit]:not(.link-button):active {
+    transform: translateY(0);
+}
+
+.account-card .link-button {
+    margin-top: 16px;
+    padding: 0;
+    font: inherit;
+    font-size: .875rem;
+    color: var(--tg-blue);
+    background: none;
+    border: 0;
+    cursor: pointer;
+}
+
+.account-error {
+    margin-bottom: 4px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: #FEF2F2;
+    border: 1px solid #FECACA;
+    color: #991B1B;
+    font-size: .9rem;
+}
+
+.account-hint {
+    margin-top: 22px;
+    font-size: .85rem;
+    color: var(--tg-muted);
+}
+
+.secure-note {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 28px;
+    padding-top: 18px;
+    border-top: 1px solid var(--tg-line);
+    font-size: .78rem;
+    color: #94A3B8;
+}
+
+.validation-message {
+    margin-top: 6px;
+    color: #B91C1C;
+    font-size: .8rem;
+}
+
+/* --------------------------------------------------------------------------
+   Movement: gentle, and off for people who ask their system for less motion
+   -------------------------------------------------------------------------- */
+
+@keyframes tg-pulse {
+    0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, .6); }
+    70% { box-shadow: 0 0 0 8px rgba(34, 197, 94, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+}
+
+@keyframes tg-breathe {
+    0%, 100% { transform: scale(1); opacity: .9; }
+    50% { transform: scale(1.12); opacity: .55; }
+}
+
+@keyframes tg-float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .live-dot, .geofence, .float-top, .float-bottom {
+        animation: none;
+    }
+}
+
+/* --------------------------------------------------------------------------
+   Phone and small tablet: the form on a white card over a navy header
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 960px) {
+    .account-page {
+        grid-template-columns: 1fr;
+    }
+
+    .account-hero {
+        display: none;
+    }
+
+    .account-form {
+        align-items: flex-start;
+        padding: 0 16px 32px;
+        background: linear-gradient(180deg, var(--tg-navy) 0, #13325E 190px, var(--tg-bg) 190px);
+    }
+
+    .account-card {
+        max-width: 440px;
+    }
+
+    .account-brand-small {
+        display: flex;
+        height: 120px;
+        margin: 0;
+        color: #fff;
+    }
+
+    .account-card > .account-body {
+        padding: 26px 22px 22px;
+        background: #fff;
+        border-radius: 16px;
+        box-shadow: var(--tg-shadow);
+    }
+
+    .account-card h1 {
+        font-size: 1.6rem;
+    }
+}
+
+/* Short screens (small laptops): tighten the brand panel so it all fits */
+@media (min-width: 961px) and (max-height: 860px) {
+    .account-hero {
+        padding-top: 28px;
+        padding-bottom: 24px;
+        gap: 20px;
+    }
+
+    .hero-kicker {
+        margin-bottom: 12px;
+    }
+
+    .account-hero h2 {
+        font-size: clamp(1.8rem, 2.6vw, 2.3rem);
+    }
+
+    .hero-main > p {
+        margin-bottom: 30px;
+        font-size: .95rem;
+    }
+
+    .hero-map {
+        max-width: 470px;
+    }
+
+    .hero-points {
+        margin-top: 34px;
+    }
+
+    .hero-foot {
+        display: none;
+    }
+}

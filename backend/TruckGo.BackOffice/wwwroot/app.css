@@ -1,0 +1,540 @@
+/* ==========================================================================
+   TruckGo back office — the styles MudBlazor has no setting for.
+   Colours and font are set in Theme/TruckGoTheme.cs; the same values are
+   repeated here as variables for the plain-HTML login pages.
+   ========================================================================== */
+
+:root {
+    --tg-navy: #0B1F3A;
+    --tg-navy-2: #12305A;
+    --tg-blue: #2563EB;
+    --tg-blue-dark: #1D4ED8;
+    --tg-amber: #F59E0B;
+    --tg-bg: #F4F6FA;
+    --tg-text: #0F172A;
+    --tg-muted: #64748B;
+    --tg-line: #E2E8F0;
+    --tg-radius: 12px;
+    --tg-shadow: 0 1px 2px rgba(15, 23, 42, .04), 0 4px 16px rgba(15, 23, 42, .06);
+}
+
+body {
+    font-family: Inter, "Segoe UI", Roboto, Arial, sans-serif;
+    background: var(--tg-bg);
+    color: var(--tg-text);
+}
+
+/* --------------------------------------------------------------------------
+   Frame: top bar, side menu, page
+   -------------------------------------------------------------------------- */
+
+.topbar {
+    border-bottom: 1px solid var(--tg-line);
+}
+
+.company-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: 8px;
+    padding: 5px 12px;
+    border-radius: 999px;
+    background: #EEF2FF;
+    color: #3730A3;
+    font-weight: 600;
+    font-size: .85rem;
+}
+
+.user-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 8px 4px 4px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--tg-text);
+    cursor: pointer;
+    font: inherit;
+}
+
+.user-button:hover {
+    background: #F1F5F9;
+}
+
+.user-text {
+    flex-direction: column;
+    align-items: flex-start;
+    line-height: 1.15;
+}
+
+.user-name {
+    font-weight: 600;
+    font-size: .875rem;
+}
+
+.user-role {
+    font-size: .75rem;
+    color: var(--tg-muted);
+}
+
+
+
+/* Side menu */
+.sidebar {
+    border-right: 0 !important;
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    height: 60px;
+    padding: 0 20px;
+    color: #fff;
+    text-decoration: none;
+    border-bottom: 1px solid rgba(255, 255, 255, .06);
+}
+
+.brand-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: var(--tg-amber);
+    color: var(--tg-navy);
+}
+
+.brand-name {
+    display: block;
+    font-weight: 800;
+    font-size: 1.15rem;
+    letter-spacing: -.01em;
+    line-height: 1.1;
+}
+
+.brand-sub {
+    display: block;
+    font-size: .72rem;
+    color: #94A3B8;
+}
+
+.side-nav {
+    padding: 8px 12px 24px;
+}
+
+.nav-section {
+    margin: 18px 12px 6px;
+    font-size: .68rem;
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: #64748B;
+}
+
+.side-nav .mud-nav-link {
+    border-radius: 8px;
+    margin: 2px 0;
+    padding: 9px 12px;
+    color: #CBD5E1;
+    font-weight: 500;
+}
+
+.side-nav .mud-nav-link:hover:not(.mud-nav-link-disabled) {
+    background: rgba(255, 255, 255, .06);
+    color: #fff;
+}
+
+/* The screen you are on: a lighter pill with an amber bar on the left */
+.side-nav .mud-nav-link.active:not(.mud-nav-link-disabled) {
+    background: rgba(37, 99, 235, .22);
+    color: #fff;
+    box-shadow: inset 3px 0 0 var(--tg-amber);
+}
+
+.side-nav .mud-nav-link.active .mud-nav-link-icon,
+.side-nav .mud-nav-link:hover .mud-nav-link-icon {
+    color: #fff;
+}
+
+.page {
+    max-width: 1320px;
+    margin: 0 auto;
+    padding: 28px 32px 48px;
+}
+
+@media (max-width: 600px) {
+    .page {
+        padding: 20px 16px 40px;
+    }
+}
+
+/* --------------------------------------------------------------------------
+   Building blocks used on every screen
+   -------------------------------------------------------------------------- */
+
+.page-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 24px;
+}
+
+.page-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+/* A white card with a soft shadow */
+.card {
+    border-radius: var(--tg-radius) !important;
+    border: 1px solid var(--tg-line);
+    box-shadow: var(--tg-shadow) !important;
+    overflow: hidden;
+}
+
+.card-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--tg-line);
+}
+
+.search-box {
+    max-width: 340px;
+    min-width: 220px;
+}
+
+/* Counter tiles */
+.stat-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.stat-tile {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 18px;
+    border-radius: var(--tg-radius) !important;
+    border: 1px solid var(--tg-line);
+    box-shadow: var(--tg-shadow) !important;
+}
+
+.stat-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1.1;
+}
+
+.stat-label {
+    font-size: .8rem;
+    color: var(--tg-muted);
+}
+
+/* Tables: quiet header, roomy rows */
+.clean-table .mud-table-head .mud-table-cell {
+    background: #F8FAFC;
+    color: var(--tg-muted);
+    font-size: .72rem;
+    font-weight: 600;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+}
+
+.clean-table .mud-table-cell {
+    padding-top: 12px;
+    padding-bottom: 12px;
+}
+
+.clean-table .mud-table-head .mud-table-cell:first-child,
+.clean-table .mud-table-body .mud-table-cell:first-child {
+    padding-left: 20px;
+}
+
+.empty-table {
+    padding: 32px;
+    text-align: center;
+    color: var(--tg-muted);
+}
+
+/* A person: avatar + name + email */
+.person {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.person-name {
+    font-weight: 600;
+}
+
+.person-sub,
+.muted {
+    color: var(--tg-muted);
+    font-size: .82rem;
+}
+
+.you-tag {
+    margin-left: 6px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: #F1F5F9;
+    color: var(--tg-muted);
+    font-size: .7rem;
+    font-weight: 600;
+}
+
+.initials {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    color: #fff;
+    font-size: .8rem;
+    font-weight: 700;
+}
+
+.initials-sm {
+    width: 28px;
+    height: 28px;
+    font-size: .7rem;
+}
+
+/* Badges: soft background, strong text */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin: 2px 4px 2px 0;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: .75rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.badge-blue { background: #DBEAFE; color: #1E40AF; }
+.badge-purple { background: #EDE9FE; color: #5B21B6; }
+.badge-green { background: #DCFCE7; color: #166534; }
+.badge-amber { background: #FEF3C7; color: #92400E; }
+.badge-red { background: #FEE2E2; color: #991B1B; }
+.badge-gray { background: #F1F5F9; color: #475569; }
+
+/* Settings: cards in a grid, icon + title on top */
+.settings-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+    gap: 20px;
+    align-items: start;
+}
+
+@media (max-width: 600px) {
+    .settings-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.settings-card {
+    padding: 22px 24px 26px;
+}
+
+.settings-title {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    margin-bottom: 22px;
+}
+
+.settings-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+}
+
+.two-cols {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px 16px;
+}
+
+/* "Coming soon" screens */
+.coming-soon {
+    max-width: 640px;
+    padding: 32px;
+}
+
+.coming-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 64px;
+    height: 64px;
+    margin-bottom: 16px;
+    border-radius: 16px;
+    background: #EEF2FF;
+    color: var(--tg-blue);
+}
+
+.coming-soon .badge {
+    margin-left: 12px;
+    vertical-align: top;
+}
+
+.coming-list {
+    margin: 12px 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.coming-list li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0;
+    color: #334155;
+}
+
+.coming-list li .mud-icon-root {
+    color: #16A34A;
+}
+
+/* A shown-once secret (temporary password, PIN) */
+.secret-once {
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 1.8rem;
+    letter-spacing: .15em;
+    text-align: center;
+    padding: 14px;
+    border-radius: 10px;
+    border: 1px dashed #CBD5E1;
+    background: #F8FAFC;
+    user-select: all;
+}
+
+/* --------------------------------------------------------------------------
+   Blazor's "something went wrong" bar
+   -------------------------------------------------------------------------- */
+
+#blazor-error-ui {
+    background: #FEF3C7;
+    bottom: 0;
+    box-shadow: 0 -1px 2px rgba(0, 0, 0, .2);
+    display: none;
+    left: 0;
+    padding: .6rem 1.25rem .7rem 1.25rem;
+    position: fixed;
+    width: 100%;
+    z-index: 2000;
+}
+
+#blazor-error-ui .dismiss {
+    cursor: pointer;
+    position: absolute;
+    right: .75rem;
+    top: .5rem;
+}
+
+/* --------------------------------------------------------------------------
+   Corrections that must win over MudBlazor's own rules
+   -------------------------------------------------------------------------- */
+
+/* The selected menu item: white text on a blue-tinted pill, amber bar */
+.sidebar .side-nav .mud-nav-link.active:not(.mud-nav-link-disabled) {
+    background-color: rgba(37, 99, 235, .25) !important;
+    color: #fff !important;
+}
+
+.sidebar .side-nav .mud-nav-link.active:not(.mud-nav-link-disabled) .mud-nav-link-icon {
+    color: #fff !important;
+}
+
+/* Phone: counters two per row instead of one tall column */
+@media (max-width: 600px) {
+    .stat-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+    }
+
+    .stat-tile {
+        padding: 12px;
+        gap: 10px;
+    }
+
+    .stat-icon {
+        width: 36px;
+        height: 36px;
+    }
+}
+
+/* --------------------------------------------------------------------------
+   The folded side menu ("mini"): icons only, names on hover
+   -------------------------------------------------------------------------- */
+
+.sidebar {
+    transition: width .2s ease;
+}
+
+/* Brand: keep the amber truck mark, hide the words */
+.sidebar.mud-drawer--closed .brand {
+    justify-content: center;
+    padding: 0;
+}
+
+.sidebar.mud-drawer--closed .brand > span:last-child {
+    display: none;
+}
+
+/* Section titles become a thin line between the groups */
+.sidebar.mud-drawer--closed .nav-section {
+    height: 1px;
+    margin: 12px 14px;
+    overflow: hidden;
+    font-size: 0;
+    background: rgba(255, 255, 255, .10);
+}
+
+/* Icons centred in the narrow strip */
+.sidebar.mud-drawer--closed .side-nav {
+    padding-left: 10px;
+    padding-right: 10px;
+}
+
+.sidebar.mud-drawer--closed .side-nav .mud-nav-link {
+    justify-content: center;
+    padding-left: 0;
+    padding-right: 0;
+}
+
+.sidebar.mud-drawer--closed .side-nav .mud-nav-link .mud-nav-link-text {
+    display: none;
+}
+
+.sidebar.mud-drawer--closed .side-nav .mud-nav-link .mud-nav-link-icon {
+    margin: 0;
+}

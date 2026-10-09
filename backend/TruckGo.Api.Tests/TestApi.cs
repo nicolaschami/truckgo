@@ -9,8 +9,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using TruckGo.Api.Auth;
-using TruckGo.Api.Data;
-using TruckGo.Api.Integration;
+using TruckGo.Data;
+using TruckGo.Integration;
 
 namespace TruckGo.Api.Tests;
 

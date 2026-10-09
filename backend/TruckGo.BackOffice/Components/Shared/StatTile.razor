@@ -1,0 +1,21 @@
+@* A small counter tile: an icon, a number and what it counts.
+   Used in a row at the top of list screens ("12 users, 2 locked..."). *@
+
+<MudPaper Class="stat-tile" Elevation="0">
+    <div class="stat-icon" style="color:@Color; background:@(Color)1A">
+        <MudIcon Icon="@Icon" />
+    </div>
+    <div>
+        <div class="stat-value">@Value</div>
+        <div class="stat-label">@Label</div>
+    </div>
+</MudPaper>
+
+@code {
+    [Parameter, EditorRequired] public string Icon { get; set; } = "";
+    [Parameter, EditorRequired] public string Label { get; set; } = "";
+    [Parameter] public int Value { get; set; }
+
+    /// <summary>Accent colour as #RRGGBB; the icon's background is the same colour, faint.</summary>
+    [Parameter] public string Color { get; set; } = "#2563EB";
+}

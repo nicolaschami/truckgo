@@ -4,7 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using TruckGo.Api.Data;
+using TruckGo.Data;
 using TruckGo.Api.Deliveries;
 
 namespace TruckGo.Api.Tests;

@@ -1,0 +1,234 @@
+@page "/users"
+@attribute [Authorize(Policy = Policies.Admin)]
+@using TruckGo.BackOffice.Components.Shared
+@inject UserAdmin Admin
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
+
+@* SCREEN 5 — Back-office users (docs/back-office-design.md).
+   Who can open the back office and with which role. Admin only.
+   Users are TruckGo's own data: created, edited, reset, unlocked and
+   deactivated here — never deleted. *@
+
+<PageTitle>Users · TruckGo</PageTitle>
+
+<PageHeader Title="Users" Subtitle="Who can open the back office, and what each person may do.">
+    <Actions>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Rounded.PersonAdd"
+                   OnClick="CreateAsync" DropShadow="false">New user</MudButton>
+    </Actions>
+</PageHeader>
+
+@* Counters: what needs attention at a glance *@
+<div class="stat-row">
+    <StatTile Icon="@Icons.Material.Rounded.Group" Label="Users" Value="@(_rows?.Count ?? 0)" Color="#2563EB" />
+    <StatTile Icon="@Icons.Material.Rounded.CheckCircle" Label="Active" Value="@(_rows?.Count(u => u.IsActive) ?? 0)" Color="#16A34A" />
+    <StatTile Icon="@Icons.Material.Rounded.Lock" Label="Locked" Value="@(_rows?.Count(u => u.IsLocked) ?? 0)" Color="#DC2626" />
+    <StatTile Icon="@Icons.Material.Rounded.Key" Label="Temporary password" Value="@(_rows?.Count(u => u.MustChangePassword) ?? 0)" Color="#F59E0B" />
+</div>
+
+<MudPaper Class="card" Elevation="0">
+    <div class="card-toolbar">
+        <MudTextField @bind-Value="_search" Placeholder="Search name or email" Immediate="true" Clearable="true"
+                      Variant="Variant.Outlined" Margin="Margin.Dense"
+                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Rounded.Search" Class="search-box" />
+        <MudSpacer />
+        <MudSwitch @bind-Value="_activeOnly" Color="Color.Primary" Label="Active only" />
+    </div>
+
+    <MudTable Items="Visible" Hover="true" Elevation="0" Loading="@(_rows is null)" Breakpoint="Breakpoint.Sm" Class="clean-table">
+        <HeaderContent>
+            <MudTh>User</MudTh>
+            <MudTh>Role</MudTh>
+            <MudTh>Last login</MudTh>
+            <MudTh>Status</MudTh>
+            <MudTh></MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="User">
+                <div class="person">
+                    <Initials Name="@context.DisplayName" />
+                    <div>
+                        <div class="person-name">
+                            @context.DisplayName
+                            @if (context.Id == _me) { <span class="you-tag">you</span> }
+                        </div>
+                        <div class="person-sub">@context.Email</div>
+                    </div>
+                </div>
+            </MudTd>
+            <MudTd DataLabel="Role">
+                <span class="badge @RoleClass(context.Role)">@context.Role</span>
+            </MudTd>
+            <MudTd DataLabel="Last login">
+                <MudTooltip Text="@Show.DateTime(context.LastLoginAt)">
+                    <span class="muted">@Show.Ago(context.LastLoginAt)</span>
+                </MudTooltip>
+            </MudTd>
+            <MudTd DataLabel="Status">
+                @* One badge per thing worth noticing; "Active" when all is fine *@
+                @if (!context.IsActive) { <span class="badge badge-gray">Inactive</span> }
+                @if (context.IsLocked) { <span class="badge badge-red">Locked</span> }
+                @if (context.MustChangePassword) { <span class="badge badge-amber">Temporary password</span> }
+                @if (context.IsActive && !context.IsLocked && !context.MustChangePassword) { <span class="badge badge-green">Active</span> }
+            </MudTd>
+            <MudTd Style="text-align:right">
+                <MudMenu Icon="@Icons.Material.Rounded.MoreHoriz" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
+                         Size="Size.Small" aria-label="Actions">
+                    <MudMenuItem Icon="@Icons.Material.Rounded.Edit" OnClick="() => EditAsync(context)">Edit name and role</MudMenuItem>
+                    <MudMenuItem Icon="@Icons.Material.Rounded.Key" OnClick="() => ResetPasswordAsync(context)">Reset password</MudMenuItem>
+                    @if (context.IsLocked)
+                    {
+                        <MudMenuItem Icon="@Icons.Material.Rounded.LockOpen" OnClick="() => UnlockAsync(context)">Unlock</MudMenuItem>
+                    }
+                    @if (context.IsActive)
+                    {
+                        <MudMenuItem Icon="@Icons.Material.Rounded.Block" OnClick="() => SetActiveAsync(context, false)">Deactivate</MudMenuItem>
+                    }
+                    else
+                    {
+                        <MudMenuItem Icon="@Icons.Material.Rounded.Undo" OnClick="() => SetActiveAsync(context, true)">Reactivate</MudMenuItem>
+                    }
+                </MudMenu>
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent>
+            <div class="empty-table">
+                <MudIcon Icon="@Icons.Material.Rounded.PersonSearch" Size="Size.Large" />
+                <div>No user matches the search.</div>
+            </div>
+        </NoRecordsContent>
+    </MudTable>
+</MudPaper>
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState> AuthState { get; set; } = default!;
+
+    private Guid _company; // the Admin's company: only its users are shown
+    private Guid _me;      // the Admin themself (cannot deactivate or demote themself)
+    private List<UserRow>? _rows;
+    private string _search = "";
+    private bool _activeOnly = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = (await AuthState).User;
+        _company = user.CompanyId()!.Value; // an Admin always belongs to a company
+        _me = user.UserId();
+        await ReloadAsync();
+    }
+
+    private async Task ReloadAsync() => _rows = await Admin.ListAsync(_company);
+
+    // The rows after the search box and the "active only" switch
+    private IEnumerable<UserRow> Visible => (_rows ?? [])
+        .Where(u => !_activeOnly || u.IsActive)
+        .Where(u => string.IsNullOrWhiteSpace(_search)
+            || u.DisplayName.Contains(_search, StringComparison.OrdinalIgnoreCase)
+            || u.Email.Contains(_search, StringComparison.OrdinalIgnoreCase));
+
+    // Each role keeps one colour on every screen
+    private static string RoleClass(UserRole role) => role switch
+    {
+        UserRole.Admin => "badge-purple",
+        UserRole.Dispatcher => "badge-blue",
+        _ => "badge-gray",
+    };
+
+    // ---- Actions ----
+
+    private async Task CreateAsync()
+    {
+        var form = await AskAsync("New user", new UserDialog.UserForm(), isNew: true);
+        if (form is null) return;
+
+        await RunAsync(async () =>
+        {
+            var password = await Admin.CreateAsync(_company, form.Email, form.DisplayName, form.Role);
+            await ShowSecretAsync("User created",
+                $"Give this temporary password to {form.DisplayName}. Their login is {UserAdmin.Normalize(form.Email)}.", password);
+        });
+    }
+
+    private async Task EditAsync(UserRow row)
+    {
+        var form = await AskAsync("Edit user",
+            new UserDialog.UserForm { Email = row.Email, DisplayName = row.DisplayName, Role = row.Role }, isNew: false);
+        if (form is null) return;
+
+        await RunAsync(async () =>
+        {
+            await Admin.UpdateAsync(_company, _me, row.Id, form.DisplayName, form.Role);
+            Snackbar.Add($"{form.DisplayName} saved.", Severity.Success);
+        });
+    }
+
+    private async Task ResetPasswordAsync(UserRow row)
+    {
+        if (!await ConfirmAsync("Reset password",
+                $"{row.DisplayName} gets a new temporary password and must choose their own at the next login. Their current password stops working.",
+                "Reset password")) return;
+
+        await RunAsync(async () =>
+        {
+            var password = await Admin.ResetPasswordAsync(_company, row.Id);
+            await ShowSecretAsync("Password reset", $"Give this temporary password to {row.DisplayName}.", password);
+        });
+    }
+
+    private Task UnlockAsync(UserRow row) => RunAsync(async () =>
+    {
+        await Admin.UnlockAsync(_company, row.Id);
+        Snackbar.Add($"{row.DisplayName} can log in again.", Severity.Success);
+    });
+
+    private async Task SetActiveAsync(UserRow row, bool active)
+    {
+        if (!active && !await ConfirmAsync("Deactivate user",
+                $"{row.DisplayName} will no longer be able to log in. Their history is kept and you can reactivate them later.",
+                "Deactivate")) return;
+
+        await RunAsync(async () =>
+        {
+            await Admin.SetActiveAsync(_company, _me, row.Id, active);
+            Snackbar.Add($"{row.DisplayName} {(active ? "reactivated" : "deactivated")}.", Severity.Success);
+        });
+    }
+
+    // ---- Helpers ----
+
+    /// <summary>Runs an action, shows a refused request as a message, then refreshes the list.</summary>
+    private async Task RunAsync(Func<Task> action)
+    {
+        try
+        {
+            await action();
+        }
+        catch (AdminException e)
+        {
+            Snackbar.Add(e.Message, Severity.Error);
+        }
+        await ReloadAsync();
+    }
+
+    private async Task<UserDialog.UserForm?> AskAsync(string title, UserDialog.UserForm form, bool isNew)
+    {
+        var dialog = await Dialogs.ShowAsync<UserDialog>(title,
+            new DialogParameters<UserDialog> { { d => d.Form, form }, { d => d.IsNew, isNew } },
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        var result = await dialog.Result;
+        return result is { Canceled: false } ? result.Data as UserDialog.UserForm : null;
+    }
+
+    private async Task ShowSecretAsync(string title, string message, string secret)
+    {
+        var dialog = await Dialogs.ShowAsync<SecretOnceDialog>(title,
+            new DialogParameters<SecretOnceDialog> { { d => d.Message, message }, { d => d.Secret, secret } },
+            // Only the Done button closes it: the secret must not vanish by a stray click
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, BackdropClick = false, CloseOnEscapeKey = false });
+        await dialog.Result;
+    }
+
+    private async Task<bool> ConfirmAsync(string title, string message, string yes) =>
+        await Dialogs.ShowMessageBoxAsync(title, message, yesText: yes, cancelText: "Cancel") == true;
+}

@@ -1,0 +1,8 @@
+@* Full page load of another address (needed to reach the plain-HTML account pages) *@
+@inject NavigationManager Nav
+
+@code {
+    [Parameter, EditorRequired] public string Url { get; set; } = "/";
+
+    protected override void OnInitialized() => Nav.NavigateTo(Url, forceLoad: true);
+}

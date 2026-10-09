@@ -1,0 +1,112 @@
+@page "/login"
+@attribute [AllowAnonymous]
+@attribute [ExcludeFromInteractiveRouting]
+@layout AccountLayout
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Authentication.Cookies
+@using System.ComponentModel.DataAnnotations
+@inject UserAdmin Users
+@inject NavigationManager Nav
+
+@* Back-office login: email + password (drivers use username + PIN in the app).
+   A plain HTML form, because signing in sets a cookie on the server's answer. *@
+
+<PageTitle>Log in · TruckGo</PageTitle>
+
+<h1>Welcome back</h1>
+<p class="account-lead">Log in to the TruckGo back office.</p>
+
+@if (_error is not null)
+{
+    <div class="account-error" role="alert">@_error</div>
+}
+
+<EditForm Model="Input" method="post" OnValidSubmit="LogInAsync" OnInvalidSubmit="ForgetPassword" FormName="login">
+    <DataAnnotationsValidator />
+
+    <label for="email">Email</label>
+    <div class="field">
+        @* Envelope icon *@
+        <svg class="field-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4-8 5-8-5V6l8 5 8-5v2z" /></svg>
+        <InputText id="email" @bind-Value="Input!.Email" autocomplete="username" placeholder="name@company.com" autofocus />
+    </div>
+    <ValidationMessage For="() => Input!.Email" />
+
+    <label for="password">Password</label>
+    <div class="field">
+        @* Padlock icon *@
+        <svg class="field-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6zm3 11c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z" /></svg>
+        <InputText id="password" type="password" @bind-Value="Input!.Password" autocomplete="current-password" placeholder="Your password" />
+        @* Show / hide the password (wwwroot/app.js) *@
+        <button type="button" class="field-eye" onclick="truckgo.togglePassword('password', this)" aria-label="Show password">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" /></svg>
+        </button>
+    </div>
+    <ValidationMessage For="() => Input!.Password" />
+
+    <button type="submit">
+        Log in
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" /></svg>
+    </button>
+</EditForm>
+
+<p class="account-hint">Forgot your password? Ask your company's TruckGo Admin to reset it.</p>
+
+@code {
+    [CascadingParameter] private HttpContext HttpContext { get; set; } = default!;
+
+    // Filled from the posted form; empty when the page is first shown
+    [SupplyParameterFromForm] private LoginInput? Input { get; set; }
+
+    protected override void OnInitialized() => Input ??= new();
+
+    /// <summary>The page the user wanted before being sent here.</summary>
+    [SupplyParameterFromQuery] private string? ReturnUrl { get; set; }
+
+    private string? _error;
+
+    private async Task LogInAsync()
+    {
+        var outcome = await Users.LoginAsync(Input!.Email, Input!.Password);
+
+        // Never send a typed password back in the page: if the login fails
+        // the form shows again with the email kept and the password empty
+        Input.Password = "";
+
+        switch (outcome.Result)
+        {
+            case LoginResult.Failed:
+                // Same message for unknown email and wrong password: reveals nothing
+                _error = "Wrong email or password.";
+                return;
+            case LoginResult.Locked:
+                _error = $"Too many wrong passwords. Try again in {LoginRules.LockTime.TotalMinutes:0} minutes, or ask your Admin to unlock your account.";
+                return;
+        }
+
+        var user = outcome.User!;
+        await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme,
+            BackOfficeClaims.Create(user, user.Company?.Name));
+
+        // A temporary password must be replaced before anything else
+        Nav.NavigateTo(outcome.Result == LoginResult.MustChangePassword
+            ? "/account/change-password"
+            : SafeReturnUrl());
+    }
+
+    // Only addresses inside the back office: never redirect to another site
+    private string SafeReturnUrl() =>
+        ReturnUrl is { Length: > 0 } url && url.StartsWith('/') && !url.StartsWith("//") ? url : "/";
+
+    // The form was refused before checking (e.g. empty email): drop the password too
+    private void ForgetPassword() => Input!.Password = "";
+
+    private sealed class LoginInput
+    {
+        [Required(ErrorMessage = "Please enter your email.")]
+        public string Email { get; set; } = "";
+
+        [Required(ErrorMessage = "Please enter your password.")]
+        public string Password { get; set; } = "";
+    }
+}

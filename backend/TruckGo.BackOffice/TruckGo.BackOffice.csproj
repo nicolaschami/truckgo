@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!--
+    TruckGo.BackOffice: the web back office (Blazor Server + MudBlazor).
+    Design: ../../docs/back-office-design.md. Database code: ../TruckGo.Core.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
+    <!-- Same user secrets as TruckGo.Api: the database password is stored once -->
+    <UserSecretsId>e9421735-2573-450b-8339-cedf6cced911</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MudBlazor" Version="9.11.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TruckGo.Core\TruckGo.Core.csproj" />
+  </ItemGroup>
+
+</Project>

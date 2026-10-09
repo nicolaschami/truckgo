@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using TruckGo.Api.Integration;
+using TruckGo.Integration;
 
-namespace TruckGo.Api.Data;
+namespace TruckGo.Data;
 
 /// <summary>
 /// Demo data for development and tests — the same trucks, plants and

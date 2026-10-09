@@ -1,0 +1,64 @@
+@* The "New user" / "Edit user" dialog. It only collects the values; the
+   Users page does the saving and shows any error. *@
+
+<MudDialog>
+    <DialogContent>
+        <MudForm @ref="_form">
+            <MudTextField @bind-Value="Form.Email" Label="Email (used to log in)" Required="true" Variant="Variant.Outlined"
+                          RequiredError="Please enter the email." InputType="InputType.Email"
+                          Disabled="@(!IsNew)" HelperText="@(IsNew ? "" : "The email never changes.")" />
+            <MudTextField @bind-Value="Form.DisplayName" Label="Name" Required="true" Variant="Variant.Outlined"
+                          RequiredError="Please enter the name." Class="mt-3" />
+            <MudSelect @bind-Value="Form.Role" Label="Role" Class="mt-3" Variant="Variant.Outlined">
+                @foreach (var role in Roles)
+                {
+                    <MudSelectItem Value="role.Role">@role.Role — @role.Meaning</MudSelectItem>
+                }
+            </MudSelect>
+            @if (IsNew)
+            {
+                <MudText Typo="Typo.body2" Class="mt-4 muted">
+                    TruckGo creates a temporary password and shows it once. The user chooses their own at the first login.
+                </MudText>
+            }
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => MudDialog.Cancel()">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SubmitAsync">
+            @(IsNew ? "Create user" : "Save")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    /// <summary>Values to start with (empty for a new user).</summary>
+    [Parameter] public UserForm Form { get; set; } = new();
+    [Parameter] public bool IsNew { get; set; }
+
+    private MudForm _form = default!;
+
+    // The roles a company Admin can give (SuperAdmin is TruckGo's own)
+    private static readonly (UserRole Role, string Meaning)[] Roles =
+    [
+        (UserRole.Admin, "everything, including users and settings"),
+        (UserRole.Dispatcher, "all screens, manages drivers"),
+        (UserRole.Viewer, "all screens, changes nothing"),
+    ];
+
+    private async Task SubmitAsync()
+    {
+        await _form.ValidateAsync();
+        if (_form.IsValid) MudDialog.Close(DialogResult.Ok(Form));
+    }
+
+    /// <summary>What the dialog edits.</summary>
+    public sealed class UserForm
+    {
+        public string Email { get; set; } = "";
+        public string DisplayName { get; set; } = "";
+        public UserRole Role { get; set; } = UserRole.Viewer;
+    }
+}

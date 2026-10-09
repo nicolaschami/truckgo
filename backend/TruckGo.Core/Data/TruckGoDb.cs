@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
-namespace TruckGo.Api.Data;
+namespace TruckGo.Data;
 
 /// <summary>
 /// The TruckGo database (PostgreSQL in real life, SQLite in the tests).

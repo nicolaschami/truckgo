@@ -1,0 +1,22 @@
+@* The top of every screen: title, one line saying what the screen is for,
+   and the screen's main buttons on the right. *@
+
+<div class="page-header">
+    <div>
+        <MudText Typo="Typo.h5" Component="h1">@Title</MudText>
+        @if (!string.IsNullOrEmpty(Subtitle))
+        {
+            <MudText Typo="Typo.body2" Class="mt-1 muted">@Subtitle</MudText>
+        }
+    </div>
+    @if (Actions is not null)
+    {
+        <div class="page-actions">@Actions</div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = "";
+    [Parameter] public string? Subtitle { get; set; }
+    [Parameter] public RenderFragment? Actions { get; set; }
+}

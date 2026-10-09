@@ -1,0 +1,75 @@
+@page "/"
+@page "/deliveries"
+@page "/map"
+@page "/customers"
+@page "/plants"
+@page "/agents"
+@page "/drivers"
+@using TruckGo.BackOffice.Components.Shared
+@inject NavigationManager Nav
+@implements IDisposable
+
+@* Placeholder for the screens not built yet: says what the screen will do
+   (from docs/back-office-design.md). Each screen leaves this list when we
+   build it, one by one. *@
+
+<PageTitle>@Screen.Title · TruckGo</PageTitle>
+
+<PageHeader Title="@Screen.Title" Subtitle="@Screen.Purpose" />
+
+<MudPaper Class="card coming-soon" Elevation="0">
+    <span class="coming-icon"><MudIcon Icon="@Screen.Icon" Style="font-size:2.4rem" /></span>
+    <span class="badge badge-amber">Coming soon</span>
+    <MudText Typo="Typo.h6" Class="mt-3">What this screen will show</MudText>
+    <ul class="coming-list">
+        @foreach (var point in Screen.WillShow)
+        {
+            <li><MudIcon Icon="@Icons.Material.Rounded.Check" Size="Size.Small" /> @point</li>
+        }
+    </ul>
+</MudPaper>
+
+@code {
+    private sealed record Planned(string Title, string Icon, string Purpose, string[] WillShow);
+
+    // What each planned screen is for — agreed in docs/back-office-design.md
+    private static readonly Dictionary<string, Planned> Screens = new()
+    {
+        [""] = new("Live board", Icons.Material.Rounded.ViewKanban,
+            "Where every truck is right now, and which ones need attention.",
+            ["Four columns: at plant, on the road, at ship-to, idle", "Time in the current state on every card",
+             "Warnings in orange and red, at the top", "Refreshes by itself"]),
+        ["deliveries"] = new("Deliveries", Icons.Material.Rounded.ReceiptLong,
+            "Follow each delivery from the plant to the customer.",
+            ["List by date, plant and status, with search", "Status timeline with what caused each step",
+             "1st and 2nd weight, net tonnes", "Proof of delivery as PDF"]),
+        ["map"] = new("Map & trace", Icons.Material.Rounded.Map,
+            "Trucks on the map, and the route of any delivery.",
+            ["Live positions coloured by state", "Plants and ship-tos with their geofence",
+             "Route replay with status markers", "Unexpected stops"]),
+        ["customers"] = new("Customers", Icons.Material.Rounded.Storefront,
+            "Customers and their ship-tos, as received from your system.",
+            ["Search and active-only filter", "Ship-tos on a map with their geofence",
+             "Recent deliveries per ship-to", "View only: the data comes from your system"]),
+        ["plants"] = new("Plants", Icons.Material.Rounded.Factory,
+            "The plants your trucks load at.",
+            ["Trucks at each plant right now, with waiting time", "Today's deliveries per plant",
+             "Location and geofence on a map", "View only: the data comes from your system"]),
+        ["agents"] = new("Forwarding agents", Icons.Material.Rounded.LocalShipping,
+            "Hauliers, their trucks and trailers.",
+            ["Trucks per agent and how many are busy", "Each truck's driver, state and delivery now",
+             "Last known position", "View only: the data comes from your system"]),
+        ["drivers"] = new("Drivers", Icons.Material.Rounded.Badge,
+            "The drivers' accounts for the TruckGo app.",
+            ["Create a driver with a generated 4-digit PIN", "Reset PIN and unlock",
+             "Truck now and last login", "Deactivate, never delete"]),
+    };
+
+    private Planned Screen => Screens.GetValueOrDefault(Nav.ToBaseRelativePath(Nav.Uri).Split('?')[0])
+        ?? new("Coming soon", Icons.Material.Rounded.Construction, "", []);
+
+    // The page follows the address when moving between these placeholders
+    protected override void OnInitialized() => Nav.LocationChanged += Refresh;
+    private void Refresh(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e) => InvokeAsync(StateHasChanged);
+    public void Dispose() => Nav.LocationChanged -= Refresh;
+}

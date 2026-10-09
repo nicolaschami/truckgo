@@ -6,9 +6,9 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using Scalar.AspNetCore;
 using TruckGo.Api.Auth;
-using TruckGo.Api.Data;
+using TruckGo.Data;
 using TruckGo.Api.Deliveries;
-using TruckGo.Api.Integration;
+using TruckGo.Integration;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -92,10 +92,7 @@ app.MapGet("/", () => Results.Redirect("/scalar")).ExcludeFromDescription();
 // Development: create/upgrade the database and load the demo data
 if (app.Environment.IsDevelopment() && app.Configuration.GetValue<bool>("Database:MigrateAndSeed"))
 {
-    using var scope = app.Services.CreateScope();
-    var db = scope.ServiceProvider.GetRequiredService<TruckGoDb>();
-    await db.Database.MigrateAsync();
-    await SeedData.EnsureSeededAsync(db);
+    await DevDatabase.MigrateAndSeedAsync(app.Services);
 }
 
 app.Run();

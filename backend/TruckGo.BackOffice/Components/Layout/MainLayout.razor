@@ -1,0 +1,108 @@
+@inherits LayoutComponentBase
+@using TruckGo.BackOffice.Components.Shared
+@using TruckGo.BackOffice.Theme
+
+@* The frame around every screen: dark side menu with the TruckGo brand,
+   white top bar with the company and the user, the screen in the middle. *@
+
+<MudThemeProvider Theme="TruckGoTheme.Theme" />
+<MudPopoverProvider />
+<MudDialogProvider CloseOnEscapeKey="true" />
+<MudSnackbarProvider />
+
+<MudLayout>
+    <MudAppBar Elevation="0" Class="topbar">
+        <MudIconButton Icon="@Icons.Material.Rounded.Menu" Color="Color.Inherit" Edge="Edge.Start"
+                       OnClick="ToggleMenuAsync" aria-label="Fold or unfold the menu" />
+
+        <AuthorizeView Context="auth">
+            @* The company the user works for (none for a TruckGo SuperAdmin) *@
+            @if (auth.User.FindFirstValue(BackOfficeClaims.CompanyName) is { Length: > 0 } company)
+            {
+                <div class="company-badge">
+                    <MudIcon Icon="@Icons.Material.Rounded.Apartment" Size="Size.Small" />
+                    <span>@company</span>
+                </div>
+            }
+            <MudSpacer />
+
+            @* The user: avatar, name and role; click for password and log out *@
+            <MudMenu AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" LockScroll="true">
+                @* MudBlazor 9: a custom opener must open the menu itself (menu.ToggleAsync) *@
+                <ActivatorContent Context="menu">
+                    <button type="button" class="user-button" @onclick="e => menu.ToggleAsync(e)">
+                        <Initials Name="@(auth.User.Identity?.Name ?? "")" />
+                        <span class="user-text d-none d-sm-flex">
+                            <span class="user-name">@auth.User.Identity?.Name</span>
+                            <span class="user-role">@auth.User.FindFirstValue(ClaimTypes.Role)</span>
+                        </span>
+                        <MudIcon Icon="@Icons.Material.Rounded.ExpandMore" Size="Size.Small" />
+                    </button>
+                </ActivatorContent>
+                <ChildContent>
+                    <div class="px-4 pt-3 pb-2">
+                        <MudText Typo="Typo.subtitle2">@auth.User.Identity?.Name</MudText>
+                        <MudText Typo="Typo.caption" Class="muted">@auth.User.FindFirstValue(ClaimTypes.Email)</MudText>
+                    </div>
+                    <MudDivider />
+                    <MudMenuItem Icon="@Icons.Material.Rounded.Key" Href="/account/change-password" ForceLoad="true">
+                        Change my password
+                    </MudMenuItem>
+                    <MudMenuItem Icon="@Icons.Material.Rounded.Logout" OnClick="LogOutAsync">Log out</MudMenuItem>
+                </ChildContent>
+            </MudMenu>
+        </AuthorizeView>
+    </MudAppBar>
+
+    @* Logging out must clear the cookie on the server, which takes a real
+       form post. The form sits here, outside the menu, because the menu
+       closes (and removes its content) as soon as an item is clicked. *@
+    <form id="logout-form" method="post" action="account/logout" hidden>
+        <AntiforgeryToken />
+    </form>
+
+    @* "Mini": folded, the menu keeps its icons (names show on hover) *@
+    <MudDrawer @bind-Open="_menuOpen" ClipMode="DrawerClipMode.Never" Elevation="0" Variant="DrawerVariant.Mini" Class="sidebar">
+        <NavMenu />
+    </MudDrawer>
+
+    <MudMainContent>
+        <div class="page">
+            @Body
+        </div>
+    </MudMainContent>
+</MudLayout>
+
+<div id="blazor-error-ui" data-nosnippet>
+    An unexpected error has occurred.
+    <a href="." class="reload">Reload</a>
+    <span class="dismiss">🗙</span>
+</div>
+
+@code {
+    [Inject] private IJSRuntime JS { get; set; } = default!;
+
+    private bool _menuOpen = true;
+
+    // The menu comes back the way the user left it (open or folded); the
+    // first time, it starts folded on a small screen (see wwwroot/app.js)
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        var open = await JS.InvokeAsync<bool>("truckgo.menuOpen");
+        if (open != _menuOpen)
+        {
+            _menuOpen = open;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ToggleMenuAsync()
+    {
+        _menuOpen = !_menuOpen;
+        await JS.InvokeVoidAsync("truckgo.rememberMenu", _menuOpen);
+    }
+
+    // Sends the hidden logout form (see wwwroot/app.js)
+    private async Task LogOutAsync() => await JS.InvokeVoidAsync("truckgo.submitForm", "logout-form");
+}

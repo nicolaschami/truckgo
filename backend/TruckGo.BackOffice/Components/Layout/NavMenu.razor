@@ -1,0 +1,32 @@
+@* The side menu (docs/back-office-design.md). Daily screens first, then
+   master data (view only), then administration. Screens a role may not
+   open are not shown at all. *@
+
+<a href="/" class="brand">
+    <span class="brand-mark"><MudIcon Icon="@Icons.Material.Rounded.LocalShipping" /></span>
+    <span>
+        <span class="brand-name">TruckGo</span>
+        <span class="brand-sub">Back office</span>
+    </span>
+</a>
+
+<MudNavMenu Class="side-nav">
+    <div class="nav-section">Follow</div>
+    <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Rounded.ViewKanban" title="Live board">Live board</MudNavLink>
+    <MudNavLink Href="/deliveries" Icon="@Icons.Material.Rounded.ReceiptLong" title="Deliveries">Deliveries</MudNavLink>
+    <MudNavLink Href="/map" Icon="@Icons.Material.Rounded.Map" title="Map & trace">Map &amp; trace</MudNavLink>
+
+    <div class="nav-section">Master data</div>
+    <MudNavLink Href="/customers" Icon="@Icons.Material.Rounded.Storefront" title="Customers">Customers</MudNavLink>
+    <MudNavLink Href="/plants" Icon="@Icons.Material.Rounded.Factory" title="Plants">Plants</MudNavLink>
+    <MudNavLink Href="/agents" Icon="@Icons.Material.Rounded.LocalShipping" title="Forwarding agents">Forwarding agents</MudNavLink>
+
+    <AuthorizeView Policy="@Policies.ManageDrivers">
+        <div class="nav-section">Administration</div>
+        <MudNavLink Href="/drivers" Icon="@Icons.Material.Rounded.Badge" title="Drivers">Drivers</MudNavLink>
+        <AuthorizeView Policy="@Policies.Admin" Context="admin">
+            <MudNavLink Href="/users" Icon="@Icons.Material.Rounded.ManageAccounts" title="Users">Users</MudNavLink>
+            <MudNavLink Href="/settings" Icon="@Icons.Material.Rounded.Tune" title="Settings">Settings</MudNavLink>
+        </AuthorizeView>
+    </AuthorizeView>
+</MudNavMenu>

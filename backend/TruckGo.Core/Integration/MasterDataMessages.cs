@@ -1,6 +1,6 @@
-using TruckGo.Api.Data;
+using TruckGo.Data;
 
-namespace TruckGo.Api.Integration;
+namespace TruckGo.Integration;
 
 // ============================================================================
 // The messages the other system sends to TruckGo — our neutral contract.

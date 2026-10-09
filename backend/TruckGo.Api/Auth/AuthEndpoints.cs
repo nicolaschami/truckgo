@@ -5,7 +5,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
-using TruckGo.Api.Data;
+using TruckGo.Admin;
+using TruckGo.Data;
 
 namespace TruckGo.Api.Auth;
 
@@ -27,8 +28,9 @@ public record LoginResponse(string AccessToken, DateTime ExpiresAt, DriverInfo D
 
 public static class AuthEndpoints
 {
-    public const int MaxFailedLogins = 5;
-    public static readonly TimeSpan LockTime = TimeSpan.FromMinutes(5);
+    // Same lock rule as the back office (TruckGo.Core/Admin/Secrets.cs)
+    public const int MaxFailedLogins = LoginRules.MaxFailedLogins;
+    public static readonly TimeSpan LockTime = LoginRules.LockTime;
 
     public static void MapAuthEndpoints(this IEndpointRouteBuilder api)
     {
