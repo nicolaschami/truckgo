@@ -19,7 +19,29 @@ dotnet ef migrations add <Name> --project TruckGo.Api --output-dir Data/Migratio
 Once running (Development), open **http://localhost:5000/scalar** to see and
 try every endpoint. The generated contract is at `/openapi/v1.json`.
 
-Demo drivers: `test1` / PIN `1234`, `test2` / PIN `5678`; demo truck `AB-1234`.
+Demo drivers: `test1` / PIN `1234`, `test2` / PIN `5678`; demo truck `AB-1234`
+with trailer `TR-1001`.
+
+Demo back-office users (for the back office, step 2): `superadmin@truckgo.local`,
+`admin@demo.truckgo.local`, `dispatcher@demo.truckgo.local`,
+`viewer@demo.truckgo.local` — password `Demo-1234`.
+
+## Master data
+
+Customers, ship-tos, plants, forwarding agents, vehicles and deliveries come
+from the client's other system and enter **only** through
+`Integration/MasterDataImport.cs` (one "save" method per record type). Today
+the seed data (`Data/SeedData.cs`) uses it; an SQS queue or an API will use
+the same methods later. Design: `../docs/back-office-design.md`.
+
+The demo data is loaded into an **empty** database at start-up. After a
+model change during development, recreate it:
+
+```
+$env:ASPNETCORE_ENVIRONMENT='Development'
+dotnet ef database drop --force --project TruckGo.Api
+dotnet run --project TruckGo.Api     # migrates and seeds again
+```
 
 ## Database password
 

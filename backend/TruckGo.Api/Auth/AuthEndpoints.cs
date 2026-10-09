@@ -70,6 +70,9 @@ public static class AuthEndpoints
 
         driver.FailedLogins = 0;
         driver.LockedUntil = null;
+        // Shown in the back office's driver screen ("last login", "device")
+        driver.LastLoginAt = now;
+        driver.LastDeviceId = request.DeviceId;
         await db.SaveChangesAsync();
 
         var expires = now.AddMinutes(jwt.Value.AccessTokenMinutes);

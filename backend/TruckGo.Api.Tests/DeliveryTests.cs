@@ -54,6 +54,12 @@ public class DeliveryTests
         Assert.Null(next.TareTons);
         Assert.Null(next.LoadedTons);
         Assert.Equal("+447700900123", next.SitePhone);
+
+        // Filled from the ship-to record and the assigned trailer
+        Assert.Equal("100245-01", next.ShipToCode);
+        Assert.Equal("Arena Way, Coventry", next.ShipToAddress);
+        Assert.Equal("Dan Whitfield  •  +44 7700 900123", next.SiteContact);
+        Assert.Equal(SeedData.DemoTrailer, next.TrailerPlate);
     }
 
     [Fact]

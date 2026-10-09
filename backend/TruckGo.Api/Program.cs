@@ -8,6 +8,7 @@ using Scalar.AspNetCore;
 using TruckGo.Api.Auth;
 using TruckGo.Api.Data;
 using TruckGo.Api.Deliveries;
+using TruckGo.Api.Integration;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -35,6 +36,10 @@ builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSc
 builder.Services.AddAuthorization();
 
 builder.Services.AddSingleton(TimeProvider.System);
+
+// INTEGRATION: the one door for master data (customers, ship-tos, plants,
+// vehicles, deliveries...). Used by the seed data now, by SQS or an API later.
+builder.Services.AddScoped<MasterDataImport>();
 builder.Services.AddProblemDetails();
 
 // JSON: enums as the app writes them ("inTransit"), no nulls dropped

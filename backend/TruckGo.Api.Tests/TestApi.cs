@@ -10,6 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using TruckGo.Api.Auth;
 using TruckGo.Api.Data;
+using TruckGo.Api.Integration;
 
 namespace TruckGo.Api.Tests;
 
@@ -53,6 +54,18 @@ public sealed class TestApi : WebApplicationFactory<Program>
     {
         using var scope = Services.CreateScope();
         await work(scope.ServiceProvider.GetRequiredService<TruckGoDb>());
+    }
+
+    /// <summary>
+    /// Sends master data through the integration's door (MasterDataImport),
+    /// as the other system will. Hands over the demo company's id.
+    /// </summary>
+    public async Task ImportAsync(Func<MasterDataImport, Guid, Task> work)
+    {
+        using var scope = Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<TruckGoDb>();
+        var company = await db.Companies.SingleAsync(c => c.Code == SeedData.CompanyCode);
+        await work(scope.ServiceProvider.GetRequiredService<MasterDataImport>(), company.Id);
     }
 
     /// <summary>A client logged in as <paramref name="username"/>.</summary>
