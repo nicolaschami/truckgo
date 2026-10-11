@@ -1,0 +1,115 @@
+@page "/vehicles"
+@inject VehicleQueries Queries
+@inject NavigationManager Nav
+
+@* SCREEN 3a — Vehicles (docs/back-office-design.md).
+   Trucks and trailers as received from the client's system, with what each
+   one is doing right now — calculated by TruckGo from the deliveries.
+   The forwarding agent is shown as information on the vehicle. View only. *@
+
+<PageTitle>Vehicles · TruckGo</PageTitle>
+
+<PageHeader Title="Vehicles" Subtitle="Your trucks and trailers — and what each one is doing right now." />
+
+<div class="stat-row">
+    <StatTile Icon="@Icons.Material.Rounded.LocalShipping" Label="Trucks" Value="@Count(VehicleKind.Truck)" Color="#2563EB" />
+    <StatTile Icon="@Icons.Material.Rounded.RvHookup" Label="Trailers" Value="@Count(VehicleKind.Trailer)" Color="#0891B2" />
+    <StatTile Icon="@Icons.Material.Rounded.Route" Label="Working now" Value="@(_rows?.Count(v => v.State != VehicleState.Idle) ?? 0)" Color="#F59E0B" />
+    <StatTile Icon="@Icons.Material.Rounded.Block" Label="Inactive" Value="@(_rows?.Count(v => !v.IsActive) ?? 0)" Color="#64748B" />
+</div>
+
+<MudPaper Class="card" Elevation="0">
+    <div class="card-toolbar">
+        @* All / Trucks / Trailers *@
+        <div class="segmented" role="group" aria-label="Kind of vehicle">
+            <button type="button" class="@(_kind is null ? "on" : "")" @onclick="() => _kind = null">All</button>
+            <button type="button" class="@(_kind == VehicleKind.Truck ? "on" : "")" @onclick="() => _kind = VehicleKind.Truck">Trucks</button>
+            <button type="button" class="@(_kind == VehicleKind.Trailer ? "on" : "")" @onclick="() => _kind = VehicleKind.Trailer">Trailers</button>
+        </div>
+        <MudTextField @bind-Value="_search" Placeholder="Search plate, model or agent" Immediate="true" Clearable="true"
+                      Variant="Variant.Outlined" Margin="Margin.Dense"
+                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Rounded.Search" Class="search-box" />
+        <MudSpacer />
+        <MudSwitch @bind-Value="_activeOnly" Color="Color.Primary" Label="Active only" />
+    </div>
+
+    <MudTable Items="Visible" Hover="true" Elevation="0" Loading="@(_rows is null)" Breakpoint="Breakpoint.Sm"
+              Class="clean-table clickable-rows" OnRowClick="@((TableRowClickEventArgs<VehicleRow> e) => Open(e.Item!))">
+        <HeaderContent>
+            <MudTh>Vehicle</MudTh>
+            <MudTh>Model</MudTh>
+            <MudTh>Forwarding agent</MudTh>
+            <MudTh>Now</MudTh>
+            <MudTh>Status</MudTh>
+            <MudTh></MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Vehicle">
+                <div class="person">
+                    <span class="kind-icon @(context.Kind == VehicleKind.Truck ? "kind-truck" : "kind-trailer")">
+                        <MudIcon Icon="@(context.Kind == VehicleKind.Truck ? Icons.Material.Rounded.LocalShipping : Icons.Material.Rounded.RvHookup)" Size="Size.Small" />
+                    </span>
+                    <div>
+                        <div class="plate">@context.Plate</div>
+                        <div class="person-sub">@(context.Kind == VehicleKind.Truck ? "Truck" : "Trailer")</div>
+                    </div>
+                </div>
+            </MudTd>
+            <MudTd DataLabel="Model">
+                <div>@context.Model</div>
+                <div class="muted">@context.Description</div>
+            </MudTd>
+            <MudTd DataLabel="Forwarding agent">@(context.ForwardingAgentName ?? "—")</MudTd>
+            <MudTd DataLabel="Now">
+                <span class="badge @Show.StateBadge(context.State)">@Show.State(context.State)</span>
+                @if (context.Current is { } d)
+                {
+                    <div class="person-sub">@d.PlantCode / @d.Number → @d.ShipToName</div>
+                }
+            </MudTd>
+            <MudTd DataLabel="Status">
+                @if (context.IsActive) { <span class="badge badge-green">Active</span> }
+                else { <span class="badge badge-gray">Inactive</span> }
+            </MudTd>
+            <MudTd Style="text-align:right"><MudIcon Icon="@Icons.Material.Rounded.ChevronRight" Class="row-arrow" /></MudTd>
+        </RowTemplate>
+        <NoRecordsContent>
+            <div class="empty-table">
+                <MudIcon Icon="@Icons.Material.Rounded.SearchOff" Size="Size.Large" />
+                <div>No vehicle matches.</div>
+            </div>
+        </NoRecordsContent>
+    </MudTable>
+</MudPaper>
+
+<ReceivedNote />
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState> AuthState { get; set; } = default!;
+
+    private List<VehicleRow>? _rows;
+    private VehicleKind? _kind;     // null = all kinds
+    private string _search = "";
+    private bool _activeOnly = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // A SuperAdmin has no company and so no vehicles to show
+        var company = (await AuthState).User.CompanyId();
+        _rows = company is { } id ? await Queries.ListAsync(id) : [];
+    }
+
+    private int Count(VehicleKind kind) => _rows?.Count(v => v.Kind == kind) ?? 0;
+
+    // The rows after the kind buttons, the search box and the "active only" switch
+    private IEnumerable<VehicleRow> Visible => (_rows ?? [])
+        .Where(v => _kind is null || v.Kind == _kind)
+        .Where(v => !_activeOnly || v.IsActive)
+        .Where(v => string.IsNullOrWhiteSpace(_search)
+            || v.Plate.Contains(_search, StringComparison.OrdinalIgnoreCase)
+            || v.Model.Contains(_search, StringComparison.OrdinalIgnoreCase)
+            || (v.Description ?? "").Contains(_search, StringComparison.OrdinalIgnoreCase)
+            || (v.ForwardingAgentName ?? "").Contains(_search, StringComparison.OrdinalIgnoreCase));
+
+    private void Open(VehicleRow row) => Nav.NavigateTo($"/vehicles/{row.Id}");
+}

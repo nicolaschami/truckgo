@@ -33,6 +33,24 @@ public static class Show
         _ => "badge-red", // Cancelled
     };
 
+    /// <summary>A vehicle's state in words (calculated from its delivery).</summary>
+    public static string State(TruckGo.Queries.VehicleState state) => state switch
+    {
+        TruckGo.Queries.VehicleState.AtPlant => "At plant",
+        TruckGo.Queries.VehicleState.OnTheRoad => "On the road",
+        TruckGo.Queries.VehicleState.AtShipTo => "At ship-to",
+        _ => "Idle",
+    };
+
+    /// <summary>The same colours as the delivery statuses: blue plant, amber road, purple site, grey idle.</summary>
+    public static string StateBadge(TruckGo.Queries.VehicleState state) => state switch
+    {
+        TruckGo.Queries.VehicleState.AtPlant => "badge-blue",
+        TruckGo.Queries.VehicleState.OnTheRoad => "badge-amber",
+        TruckGo.Queries.VehicleState.AtShipTo => "badge-purple",
+        _ => "badge-gray",
+    };
+
     /// <summary>"12.50 t" — quantities are always tonnes.</summary>
     public static string Tonnes(double tons) => $"{tons:0.00} t";
 

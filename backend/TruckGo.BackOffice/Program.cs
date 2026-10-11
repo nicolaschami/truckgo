@@ -30,6 +30,7 @@ builder.Services.AddScoped<DriverAdmin>();
 // What the screens show (TruckGo.Core/Queries), read only
 builder.Services.AddScoped<CustomerQueries>();
 builder.Services.AddScoped<PlantQueries>();
+builder.Services.AddScoped<VehicleQueries>();
 
 // LOGIN: a cookie, kept for a working day and renewed while the user is active
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)

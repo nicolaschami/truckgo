@@ -854,3 +854,77 @@ h1:focus-visible {
         text-align: left;
     }
 }
+
+/* --------------------------------------------------------------------------
+   Vehicles: plates, kind icons, the All / Trucks / Trailers switch
+   -------------------------------------------------------------------------- */
+
+/* A licence plate, written like one */
+.plate {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 5px;
+    border: 1.5px solid #0F172A;
+    background: #FFFFFF;
+    font-family: Consolas, "Courier New", monospace;
+    font-weight: 700;
+    letter-spacing: .05em;
+    white-space: nowrap;
+}
+
+.plate-lg {
+    font-size: 1.3rem;
+    padding: 2px 12px;
+}
+
+.kind-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+}
+
+.kind-icon.kind-lg {
+    width: 44px;
+    height: 44px;
+}
+
+.kind-truck {
+    background: #DBEAFE;
+    color: #1D4ED8;
+}
+
+.kind-trailer {
+    background: #CFFAFE;
+    color: #0E7490;
+}
+
+/* Three buttons side by side, one "on" */
+.segmented {
+    display: inline-flex;
+    padding: 3px;
+    border-radius: 10px;
+    background: #F1F5F9;
+    border: 1px solid var(--tg-line);
+}
+
+.segmented button {
+    padding: 6px 14px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: #475569;
+    font: inherit;
+    font-weight: 600;
+    font-size: .85rem;
+    cursor: pointer;
+}
+
+.segmented button.on {
+    background: #FFFFFF;
+    color: var(--tg-blue);
+    box-shadow: 0 1px 3px rgba(15, 23, 42, .12);
+}

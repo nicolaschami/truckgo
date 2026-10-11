@@ -1,0 +1,168 @@
+@page "/vehicles/{Id:guid}"
+@inject VehicleQueries Queries
+
+@* SCREEN 3b — One truck or trailer (docs/back-office-design.md): its
+   details and forwarding agent, what it is doing right now, and its recent
+   deliveries. View only. (Last known position on a map comes with the app's
+   GPS positions, backend phase 2.) *@
+
+<PageTitle>@(_vehicle?.Plate ?? "Vehicle") · TruckGo</PageTitle>
+
+<BackButton Href="/vehicles" Text="Vehicles" />
+
+@if (_notFound)
+{
+    <MudAlert Severity="Severity.Warning">This vehicle does not exist.</MudAlert>
+}
+else if (_vehicle is not { } v)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else
+{
+    var isTruck = v.Kind == VehicleKind.Truck;
+    <div class="page-header">
+        <div>
+            <div class="title-row">
+                <span class="kind-icon kind-lg @(isTruck ? "kind-truck" : "kind-trailer")">
+                    <MudIcon Icon="@(isTruck ? Icons.Material.Rounded.LocalShipping : Icons.Material.Rounded.RvHookup)" />
+                </span>
+                <MudText Typo="Typo.h5" HtmlTag="h1"><span class="plate plate-lg">@v.Plate</span></MudText>
+                <span class="badge @Show.StateBadge(v.State)">@Show.State(v.State)</span>
+                @if (!v.IsActive) { <span class="badge badge-gray">Inactive</span> }
+            </div>
+            <MudText Typo="Typo.body2" Class="mt-1 muted">
+                @(isTruck ? "Truck" : "Trailer") · @v.Model@(v.Description is { } desc ? $" · {desc}" : "")
+            </MudText>
+        </div>
+    </div>
+
+    @* ---- What it is doing now ---- *@
+    <MudPaper Class="card mb-5" Elevation="0">
+        <div class="card-toolbar">
+            <div class="card-title"><MudIcon Icon="@Icons.Material.Rounded.Route" /> Now</div>
+        </div>
+        @if (v.Current is { } d)
+        {
+            <div class="at-plant">
+                <div class="at-plant-truck">
+                    <MudIcon Icon="@Icons.Material.Rounded.ReceiptLong" />
+                    <div>
+                        <span class="code-chip">@d.PlantCode / @d.Number</span>
+                        <div class="muted mt-1">@d.Material</div>
+                    </div>
+                </div>
+                <div class="at-plant-delivery">
+                    <div class="person-name">@d.CustomerName</div>
+                    <div class="muted">→ @d.ShipToName</div>
+                </div>
+                <div class="at-plant-status">
+                    <span class="badge @Show.StatusBadge(d.Status)">@Show.Status(d.Status)</span>
+                    <div class="wait">
+                        <MudIcon Icon="@Icons.Material.Rounded.Timer" Size="Size.Small" />
+                        @Show.Duration(d.Since)
+                    </div>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="empty-table">
+                <MudIcon Icon="@Icons.Material.Rounded.LocalParking" Size="Size.Large" />
+                <div>Idle — no delivery under way.</div>
+            </div>
+        }
+    </MudPaper>
+
+    <div class="detail-grid">
+        @* ---- Details ---- *@
+        <MudPaper Class="card pad" Elevation="0">
+            <div class="card-title"><MudIcon Icon="@(isTruck ? Icons.Material.Rounded.LocalShipping : Icons.Material.Rounded.RvHookup)" /> @(isTruck ? "Truck" : "Trailer") details</div>
+            <InfoList Items="@([
+                ("Plate", v.Plate),
+                ("Code in your system", v.Code),
+                ("Kind", isTruck ? "Truck" : "Trailer"),
+                ("Model", v.Model),
+                ("Description", v.Description),
+                ("Last received", Show.DateTime(v.LastReceivedAt)),
+            ])" />
+            <ExtraInfo Values="v.Extra" />
+        </MudPaper>
+
+        @* ---- Forwarding agent: information on the vehicle ---- *@
+        <MudPaper Class="card pad" Elevation="0">
+            <div class="card-title"><MudIcon Icon="@Icons.Material.Rounded.Business" /> Forwarding agent</div>
+            @if (v.ForwardingAgentName is { } agent)
+            {
+                <div class="contact">
+                    <Initials Name="@agent" />
+                    <div>
+                        <div class="person-name">@agent</div>
+                        <div class="muted">@v.ForwardingAgentCode</div>
+                        @if (v.ForwardingAgentPhone is { } phone)
+                        {
+                            <a href="tel:@phone.Replace(" ", "")" class="link">@phone</a>
+                        }
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="muted">No forwarding agent — own fleet.</div>
+            }
+        </MudPaper>
+    </div>
+
+    @* ---- Recent deliveries ---- *@
+    <MudPaper Class="card mt-5" Elevation="0">
+        <div class="card-toolbar">
+            <div class="card-title"><MudIcon Icon="@Icons.Material.Rounded.ReceiptLong" /> Recent deliveries</div>
+            <MudSpacer />
+            <span class="muted">Last @VehicleQueries.RecentDeliveryCount, newest first</span>
+        </div>
+        <MudTable Items="v.RecentDeliveries" Hover="true" Elevation="0" Breakpoint="Breakpoint.Sm" Class="clean-table">
+            <HeaderContent>
+                <MudTh>Delivery</MudTh>
+                <MudTh>Planned</MudTh>
+                <MudTh>Customer → ship-to</MudTh>
+                <MudTh>Material</MudTh>
+                <MudTh Style="text-align:right">Ordered</MudTh>
+                <MudTh>@(isTruck ? "Trailer" : "Truck")</MudTh>
+                <MudTh>Status</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Delivery"><span class="code-chip">@context.PlantCode / @context.Number</span></MudTd>
+                <MudTd DataLabel="Planned">@Show.DateTime(context.ScheduledAt)</MudTd>
+                <MudTd DataLabel="Customer → ship-to">
+                    <div>@context.CustomerName</div>
+                    <div class="muted">@context.ShipToName</div>
+                </MudTd>
+                <MudTd DataLabel="Material">@context.Material</MudTd>
+                <MudTd DataLabel="Ordered" Style="text-align:right">@Show.Tonnes(context.OrderedTons)</MudTd>
+                @* The other half of the combination: a truck shows its trailer, a trailer its truck *@
+                <MudTd DataLabel="@(isTruck ? "Trailer" : "Truck")">@((isTruck ? context.TrailerPlate : context.TruckPlate) ?? "—")</MudTd>
+                <MudTd DataLabel="Status"><span class="badge @Show.StatusBadge(context.Status)">@Show.Status(context.Status)</span></MudTd>
+            </RowTemplate>
+            <NoRecordsContent>
+                <div class="empty-table">No delivery with this vehicle yet.</div>
+            </NoRecordsContent>
+        </MudTable>
+    </MudPaper>
+
+    <ReceivedNote LastReceivedAt="v.LastReceivedAt" />
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+    [CascadingParameter] private Task<AuthenticationState> AuthState { get; set; } = default!;
+
+    private VehicleDetail? _vehicle;
+    private bool _notFound;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var company = (await AuthState).User.CompanyId();
+        _vehicle = company is { } id ? await Queries.GetAsync(id, Id) : null;
+        _notFound = _vehicle is null;
+    }
+}
