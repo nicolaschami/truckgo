@@ -31,6 +31,7 @@ builder.Services.AddScoped<DriverAdmin>();
 builder.Services.AddScoped<CustomerQueries>();
 builder.Services.AddScoped<PlantQueries>();
 builder.Services.AddScoped<VehicleQueries>();
+builder.Services.AddScoped<LiveBoardQueries>();
 
 // LOGIN: a cookie, kept for a working day and renewed while the user is active
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)

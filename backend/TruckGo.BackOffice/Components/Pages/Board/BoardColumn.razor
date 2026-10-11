@@ -1,0 +1,37 @@
+@* One column of the live board: a coloured header with the count, then the
+   trucks' cards (the ones needing attention first — sorted by the query). *@
+
+<div class="board-col @Css">
+    <div class="col-head">
+        <MudIcon Icon="@Icon" Size="Size.Small" />
+        <span>@Title</span>
+        @if (Cards.Count(c => c.Attention != Attention.None) is > 0 and var alerts)
+        {
+            <span class="col-alert" title="Need attention"><MudIcon Icon="@Icons.Material.Rounded.WarningAmber" Size="Size.Small" />@alerts</span>
+        }
+        <span class="col-count">@Cards.Count</span>
+    </div>
+    <div class="col-body">
+        @if (Cards.Count == 0)
+        {
+            <div class="col-empty">@Empty</div>
+        }
+        @foreach (var card in Cards)
+        {
+            <BoardCardView Card="card" @key="card.Number" />
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = "";
+    [Parameter, EditorRequired] public string Icon { get; set; } = "";
+
+    /// <summary>The column's colour class (app.css): col-blue, col-amber, col-purple.</summary>
+    [Parameter] public string Css { get; set; } = "";
+
+    [Parameter, EditorRequired] public IReadOnlyList<BoardCard> Cards { get; set; } = [];
+
+    /// <summary>What to say when the column is empty.</summary>
+    [Parameter] public string Empty { get; set; } = "Nothing here.";
+}

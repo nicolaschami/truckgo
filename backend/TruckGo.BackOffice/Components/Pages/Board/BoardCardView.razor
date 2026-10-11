@@ -1,0 +1,88 @@
+@inject NavigationManager Nav
+
+@* One truck at work on the live board: plate, delivery, customer → site,
+   and how long it has been in this state against the Settings limit.
+   Orange / red when it needs attention (rules in LiveBoardQueries.Judge). *@
+
+<div class="board-card @AttentionClass" @onclick="Open" title="@Card.Reason">
+    <div class="bc-top">
+        <span class="plate">@(Card.TruckPlate ?? "—")</span>
+        @if (Card.TrailerPlate is { } trailer)
+        {
+            <span class="bc-trailer"><MudIcon Icon="@Icons.Material.Rounded.RvHookup" Size="Size.Small" /> @trailer</span>
+        }
+        <MudSpacer />
+        <span class="badge @Show.StatusBadge(Card.Status)">@Show.Status(Card.Status)</span>
+    </div>
+
+    <div class="bc-who">
+        <div class="bc-customer">@Card.CustomerName</div>
+        <div class="bc-site"><MudIcon Icon="@Icons.Material.Rounded.Place" Size="Size.Small" /> @Card.ShipToName</div>
+    </div>
+
+    <div class="bc-what">
+        <span class="code-chip">@Card.PlantCode / @Card.Number</span>
+        <span class="muted">@Card.Material</span>
+        <span class="bc-tons">@Show.Tonnes(Card.OrderedTons)</span>
+    </div>
+
+    @if (Card.Column == VehicleState.OnTheRoad)
+    {
+        @* On the road: the delivery window, and late or not *@
+        <div class="bc-time">
+            <MudIcon Icon="@Icons.Material.Rounded.Schedule" Size="Size.Small" />
+            <span>Window @Show.Time(Card.WindowStart)–@Show.Time(Card.WindowEnd)</span>
+            <MudSpacer />
+            @if (Card.Attention == Attention.Danger)
+            {
+                <span class="late-tag">LATE</span>
+            }
+            else
+            {
+                <span class="muted">on the road @Show.Duration(Card.Since)</span>
+            }
+        </div>
+    }
+    else
+    {
+        @* At the plant or the site: waiting time against the Settings limit *@
+        <div class="bc-time">
+            <MudIcon Icon="@Icons.Material.Rounded.Timer" Size="Size.Small" />
+            <strong>@Show.Duration(Card.Since)</strong>
+            <MudSpacer />
+            @if (Card.LimitMinutes is { } limit)
+            {
+                <span class="muted">limit @limit min</span>
+            }
+        </div>
+        @if (Card.LimitMinutes is { } max)
+        {
+            <div class="bc-bar"><div style="width:@BarPercent(max)%"></div></div>
+        }
+    }
+
+    @if (Card.Reason is { } reason)
+    {
+        <div class="bc-reason"><MudIcon Icon="@Icons.Material.Rounded.WarningAmber" Size="Size.Small" /> @reason</div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public BoardCard Card { get; set; } = default!;
+
+    private string AttentionClass => Card.Attention switch
+    {
+        Attention.Danger => "bc-danger",
+        Attention.Warning => "bc-warning",
+        _ => "",
+    };
+
+    // How full the waiting bar is: 100% = the Settings limit reached
+    private int BarPercent(int limit) => (int)Math.Clamp(Card.Minutes / limit * 100, 3, 100);
+
+    // A click opens the truck
+    private void Open()
+    {
+        if (Card.TruckId is { } id) Nav.NavigateTo($"/vehicles/{id}");
+    }
+}

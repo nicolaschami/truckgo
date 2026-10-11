@@ -1,0 +1,204 @@
+@page "/"
+@implements IDisposable
+@inject LiveBoardQueries Queries
+@inject IJSRuntime JS
+@inject IWebHostEnvironment Env
+@inject IDbContextFactory<TruckGoDb> DbFactory
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
+@using Microsoft.EntityFrameworkCore
+
+@* SCREEN 7 — Live board (docs/back-office-design.md).
+   Where every truck is right now and which ones need attention: four
+   columns (at plant / on the road / at ship-to / idle), warnings from the
+   Settings limits, refreshed every 15 seconds. "TV mode" shows the board
+   full screen in a dark theme, for a big screen in the dispatch office. *@
+
+<PageTitle>Live board · TruckGo</PageTitle>
+
+<div id="live-board" class="board-wrap">
+    @* ---- Header: title, live marker, plant filter, buttons ---- *@
+    <div class="board-head">
+        <div>
+            <div class="title-row">
+                <MudText Typo="Typo.h5" HtmlTag="h1">Live board</MudText>
+                <span class="live-pill"><span class="live-dot"></span> Live</span>
+            </div>
+            <div class="muted mt-1">
+                Updated @(_board is { } b ? Show.Time(b.At) + ":" + b.At.ToLocalTime().ToString("ss") : "…") · refreshes every @RefreshSeconds s
+            </div>
+        </div>
+        <div class="board-actions">
+            @if (_board is { Plants.Count: > 1 } board)
+            {
+                <div class="segmented" role="group" aria-label="Plant">
+                    <button type="button" class="@(_plantId is null ? "on" : "")" @onclick="() => FilterAsync(null)">All plants</button>
+                    @foreach (var p in board.Plants)
+                    {
+                        <button type="button" class="@(_plantId == p.Id ? "on" : "")" @onclick="() => FilterAsync(p.Id)" title="@p.Name">@p.Code</button>
+                    }
+                </div>
+            }
+            @if (_canPlayDemo)
+            {
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Rounded.PlayCircle"
+                           OnClick="PlayDemoAsync" Class="tv-hide">Load a demo day</MudButton>
+            }
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Rounded.Tv"
+                       OnClick="TvModeAsync" DropShadow="false" Class="tv-hide">TV mode</MudButton>
+        </div>
+    </div>
+
+    @if (_board is not { } live)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    }
+    else
+    {
+        var t = live.Totals;
+        @* ---- The numbers ---- *@
+        <div class="kpi-row">
+            <div class="kpi"><div class="kpi-value">@t.Working</div><div class="kpi-label">Trucks working</div></div>
+            <div class="kpi kpi-blue"><div class="kpi-value">@t.AtPlant</div><div class="kpi-label">At plant</div></div>
+            <div class="kpi kpi-amber"><div class="kpi-value">@t.OnTheRoad</div><div class="kpi-label">On the road</div></div>
+            <div class="kpi kpi-purple"><div class="kpi-value">@t.AtShipTo</div><div class="kpi-label">At ship-to</div></div>
+            <div class="kpi kpi-gray"><div class="kpi-value">@t.Idle</div><div class="kpi-label">Idle</div></div>
+            <div class="kpi kpi-green">
+                <div class="kpi-value">@t.DeliveredToday<small> · @t.DeliveredTonsToday.ToString("0.#") t</small></div>
+                <div class="kpi-label">Delivered today</div>
+            </div>
+            <div class="kpi @(t.Warnings > 0 ? "kpi-red kpi-alert" : "kpi-gray")">
+                <div class="kpi-value">@t.Warnings</div><div class="kpi-label">Need attention</div>
+            </div>
+        </div>
+
+        @* ---- The four columns ---- *@
+        <div class="board-cols">
+            <BoardColumn Title="At plant" Icon="@Icons.Material.Rounded.Factory" Css="col-blue"
+                         Cards="@Column(live, VehicleState.AtPlant)" Empty="No truck at a plant." />
+            <BoardColumn Title="On the road" Icon="@Icons.Material.Rounded.Route" Css="col-amber"
+                         Cards="@Column(live, VehicleState.OnTheRoad)" Empty="No truck on the road." />
+            <BoardColumn Title="At ship-to" Icon="@Icons.Material.Rounded.Place" Css="col-purple"
+                         Cards="@Column(live, VehicleState.AtShipTo)" Empty="No truck at a site." />
+
+            @* Idle trucks: compact, with their next delivery today *@
+            <div class="board-col col-gray">
+                <div class="col-head">
+                    <MudIcon Icon="@Icons.Material.Rounded.LocalParking" Size="Size.Small" />
+                    <span>Idle</span>
+                    <span class="col-count">@live.Idle.Count</span>
+                </div>
+                <div class="col-body">
+                    @if (live.Idle.Count == 0)
+                    {
+                        <div class="col-empty">Every truck is working.</div>
+                    }
+                    @foreach (var truck in live.Idle)
+                    {
+                        <a class="idle-card" href="/vehicles/@truck.Id">
+                            <div class="bc-top">
+                                <span class="plate">@truck.Plate</span>
+                                <span class="muted idle-model">@truck.Model</span>
+                            </div>
+                            @if (truck.NextNumber is not null)
+                            {
+                                <div class="idle-next">
+                                    <MudIcon Icon="@Icons.Material.Rounded.Schedule" Size="Size.Small" />
+                                    Next @Show.Time(truck.NextScheduledAt!.Value) · @truck.NextPlantCode / @truck.NextNumber → @truck.NextShipToName
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="idle-next muted">Free — nothing planned today</div>
+                            }
+                        </a>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private const int RefreshSeconds = 15;
+
+    [CascadingParameter] private Task<AuthenticationState> AuthState { get; set; } = default!;
+
+    private Guid _company;
+    private Guid? _plantId;          // null = all plants
+    private LiveBoard? _board;
+    private bool _canPlayDemo;       // development + Admin only
+    private PeriodicTimer? _timer;
+    private readonly CancellationTokenSource _stop = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = (await AuthState).User;
+        if (user.CompanyId() is not { } company) return; // a SuperAdmin has no board
+        _company = company;
+        _canPlayDemo = Env.IsDevelopment() && user.IsInRole(nameof(UserRole.Admin));
+        await LoadAsync();
+    }
+
+    // Start refreshing once the page is live in the browser
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender && _company != Guid.Empty) _ = RefreshLoopAsync();
+    }
+
+    private async Task RefreshLoopAsync()
+    {
+        _timer = new PeriodicTimer(TimeSpan.FromSeconds(RefreshSeconds));
+        try
+        {
+            while (await _timer.WaitForNextTickAsync(_stop.Token))
+            {
+                await LoadAsync();
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // The page was closed: stop refreshing
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        var (from, to) = Show.Today();
+        _board = await Queries.GetAsync(_company, _plantId, from, to, DateTime.UtcNow);
+    }
+
+    private async Task FilterAsync(Guid? plantId)
+    {
+        _plantId = plantId;
+        await LoadAsync();
+    }
+
+    private static IReadOnlyList<BoardCard> Column(LiveBoard board, VehicleState column) =>
+        board.Cards.Where(c => c.Column == column).ToList();
+
+    // Full screen, dark: for a big screen on the dispatch office wall (app.js)
+    private async Task TvModeAsync() => await JS.InvokeVoidAsync("truckgo.fullscreen", "live-board");
+
+    // DEMO ONLY: plays a working day for the demo company (TruckGo.Core/Data/DemoDay.cs)
+    private async Task PlayDemoAsync()
+    {
+        var ok = await Dialogs.ShowMessageBoxAsync("Load a demo day",
+            "This puts the demo company's trucks to work right now (loading, on the road, at sites, two delivered) so the board can be shown. Only for development and demos. Running it again resets the times.",
+            yesText: "Load the demo day", cancelText: "Cancel");
+        if (ok != true) return;
+
+        await using var db = await DbFactory.CreateDbContextAsync();
+        await DemoDay.PlayAsync(db, DateTime.UtcNow);
+        await LoadAsync();
+        Snackbar.Add("Demo day loaded.", Severity.Success);
+    }
+
+    public void Dispose()
+    {
+        _stop.Cancel();
+        _timer?.Dispose();
+        _stop.Dispose();
+    }
+}

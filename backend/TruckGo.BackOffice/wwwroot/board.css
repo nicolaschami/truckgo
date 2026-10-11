@@ -1,0 +1,407 @@
+/* ==========================================================================
+   TruckGo back office — the live board (Components/Pages/Board).
+   Colours follow the rest of the back office: blue = at plant, amber = on
+   the road, purple = at ship-to, grey = idle; orange / red = attention.
+   ========================================================================== */
+
+.board-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+}
+
+.board-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+/* "● Live" next to the title (the dot pulses, see account.css) */
+.live-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 4px 11px;
+    border-radius: 999px;
+    background: #DCFCE7;
+    color: #166534;
+    font-size: .78rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+/* --------------------------------------------------------------------------
+   The numbers row
+   -------------------------------------------------------------------------- */
+
+.kpi-row {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.kpi {
+    padding: 14px 16px;
+    border-radius: var(--tg-radius);
+    background: #fff;
+    border: 1px solid var(--tg-line);
+    border-top: 4px solid #0F172A;
+    box-shadow: var(--tg-shadow);
+}
+
+.kpi-value {
+    font-size: 1.9rem;
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -.02em;
+}
+
+.kpi-value small {
+    font-size: .95rem;
+    font-weight: 600;
+    color: var(--tg-muted);
+}
+
+.kpi-label {
+    margin-top: 2px;
+    font-size: .78rem;
+    font-weight: 600;
+    color: var(--tg-muted);
+}
+
+.kpi-blue { border-top-color: #2563EB; }
+.kpi-amber { border-top-color: #F59E0B; }
+.kpi-purple { border-top-color: #7C3AED; }
+.kpi-gray { border-top-color: #94A3B8; }
+.kpi-green { border-top-color: #16A34A; }
+.kpi-red { border-top-color: #DC2626; }
+.kpi-alert .kpi-value { color: #DC2626; }
+
+@media (max-width: 1200px) {
+    .kpi-row { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+@media (max-width: 600px) {
+    .kpi-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* --------------------------------------------------------------------------
+   The four columns
+   -------------------------------------------------------------------------- */
+
+.board-cols {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+    align-items: start;
+}
+
+@media (max-width: 1200px) {
+    .board-cols { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 700px) {
+    .board-cols { grid-template-columns: 1fr; }
+}
+
+.board-col {
+    overflow: hidden;
+    border-radius: 14px;
+    background: #EEF2F7;
+    border: 1px solid var(--tg-line);
+}
+
+.col-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 14px;
+    color: #fff;
+    font-weight: 700;
+}
+
+.col-blue .col-head { background: linear-gradient(135deg, #2563EB, #1D4ED8); }
+.col-amber .col-head { background: linear-gradient(135deg, #F59E0B, #D97706); }
+.col-purple .col-head { background: linear-gradient(135deg, #7C3AED, #6D28D9); }
+.col-gray .col-head { background: linear-gradient(135deg, #64748B, #475569); }
+
+.col-count {
+    min-width: 28px;
+    margin-left: auto;
+    padding: 2px 9px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .25);
+    text-align: center;
+}
+
+.col-alert {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: #FEE2E2;
+    color: #B91C1C;
+    font-size: .78rem;
+}
+
+.col-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 120px;
+    padding: 10px;
+}
+
+.col-empty {
+    padding: 24px 8px;
+    text-align: center;
+    color: var(--tg-muted);
+    font-size: .85rem;
+}
+
+/* --------------------------------------------------------------------------
+   A truck card
+   -------------------------------------------------------------------------- */
+
+.board-card,
+.idle-card {
+    display: block;
+    padding: 12px 13px;
+    border-radius: 12px;
+    background: #fff;
+    border: 1px solid var(--tg-line);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, .05);
+    color: inherit;
+    text-decoration: none;
+    cursor: pointer;
+    transition: transform .15s, box-shadow .15s;
+    animation: tg-card-in .35s ease;
+}
+
+.board-card:hover,
+.idle-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(15, 23, 42, .10);
+}
+
+.bc-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.bc-trailer {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    font-size: .78rem;
+    color: var(--tg-muted);
+    white-space: nowrap; /* "TR-1001" never breaks in two */
+}
+
+/* Badges and times stay on one line in a narrow card */
+.bc-top .badge,
+.bc-time span {
+    white-space: nowrap;
+}
+
+.bc-who {
+    margin-top: 10px;
+}
+
+.bc-customer {
+    font-weight: 700;
+    font-size: .9rem;
+}
+
+.bc-site {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    margin-top: 2px;
+    font-size: .82rem;
+    color: #475569;
+}
+
+.bc-what {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+    font-size: .78rem;
+}
+
+.bc-tons {
+    margin-left: auto;
+    font-weight: 700;
+}
+
+.bc-time {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 10px;
+    padding-top: 9px;
+    border-top: 1px dashed var(--tg-line);
+    font-size: .82rem;
+}
+
+/* The waiting bar: fills up to the Settings limit */
+.bc-bar {
+    height: 5px;
+    margin-top: 7px;
+    overflow: hidden;
+    border-radius: 99px;
+    background: #E2E8F0;
+}
+
+.bc-bar > div {
+    height: 100%;
+    border-radius: 99px;
+    background: #22C55E;
+    transition: width .6s ease;
+}
+
+.bc-reason {
+    display: flex;
+    align-items: flex-start;
+    gap: 5px;
+    margin-top: 8px;
+    font-size: .78rem;
+    font-weight: 600;
+}
+
+.late-tag {
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: #DC2626;
+    color: #fff;
+    font-size: .72rem;
+    font-weight: 800;
+    letter-spacing: .08em;
+    animation: tg-blink 1.6s ease-in-out infinite;
+}
+
+/* Orange: past the Settings limit */
+.bc-warning {
+    border-color: #FCD34D;
+    background: #FFFBEB;
+    box-shadow: inset 4px 0 0 var(--tg-amber);
+}
+
+.bc-warning .bc-bar > div { background: var(--tg-amber); }
+.bc-warning .bc-reason { color: #B45309; }
+
+/* Red: twice the limit, or late */
+.bc-danger {
+    border-color: #FCA5A5;
+    background: #FEF2F2;
+    box-shadow: inset 4px 0 0 #DC2626;
+    animation: tg-card-in .35s ease, tg-glow 2.4s ease-in-out infinite;
+}
+
+.bc-danger .bc-bar > div { background: #DC2626; }
+.bc-danger .bc-reason { color: #B91C1C; }
+
+/* Idle trucks: smaller cards with their next delivery */
+.idle-model {
+    font-size: .78rem;
+}
+
+.idle-next {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 8px;
+    font-size: .78rem;
+    color: #334155;
+}
+
+@keyframes tg-card-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: none; }
+}
+
+@keyframes tg-glow {
+    0%, 100% { box-shadow: inset 4px 0 0 #DC2626, 0 0 0 0 rgba(220, 38, 38, 0); }
+    50% { box-shadow: inset 4px 0 0 #DC2626, 0 0 0 4px rgba(220, 38, 38, .15); }
+}
+
+@keyframes tg-blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: .55; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .board-card, .idle-card, .bc-danger, .late-tag { animation: none; }
+}
+
+/* --------------------------------------------------------------------------
+   TV mode: the board alone, full screen, dark (truckgo.fullscreen in app.js)
+   -------------------------------------------------------------------------- */
+
+.board-wrap:fullscreen {
+    overflow: auto;
+    padding: 28px 32px;
+    background: radial-gradient(circle at 85% 0%, rgba(37, 99, 235, .25), transparent 40%), #0B1220;
+    color: #E2E8F0;
+}
+
+.board-wrap:fullscreen .tv-hide { display: none !important; }
+.board-wrap:fullscreen .muted { color: #94A3B8; }
+.board-wrap:fullscreen h1 { color: #fff; font-size: 2rem; }
+
+.board-wrap:fullscreen .kpi {
+    background: #111A2E;
+    border-color: #1E293B;
+    box-shadow: none;
+}
+
+.board-wrap:fullscreen .kpi-value { color: #fff; font-size: 2.4rem; }
+.board-wrap:fullscreen .kpi-alert .kpi-value { color: #F87171; }
+.board-wrap:fullscreen .kpi-label { color: #94A3B8; }
+
+.board-wrap:fullscreen .board-col {
+    background: #0F172A;
+    border-color: #1E293B;
+}
+
+.board-wrap:fullscreen .board-card,
+.board-wrap:fullscreen .idle-card {
+    background: #16213A;
+    border-color: #23314F;
+    color: #E2E8F0;
+}
+
+.board-wrap:fullscreen .bc-site,
+.board-wrap:fullscreen .idle-next { color: #CBD5E1; }
+
+.board-wrap:fullscreen .bc-warning { background: #2A2213; border-color: #78350F; }
+.board-wrap:fullscreen .bc-warning .bc-reason { color: #FBBF24; }
+.board-wrap:fullscreen .bc-danger { background: #2A1418; border-color: #7F1D1D; }
+.board-wrap:fullscreen .bc-danger .bc-reason { color: #F87171; }
+
+.board-wrap:fullscreen .plate {
+    background: #F8FAFC;
+    color: #0F172A;
+}
+
+.board-wrap:fullscreen .code-chip {
+    background: #1E293B;
+    border-color: #334155;
+    color: #CBD5E1;
+}
+
+.board-wrap:fullscreen .bc-bar { background: #23314F; }
+.board-wrap:fullscreen .bc-time { border-top-color: #23314F; }
+.board-wrap:fullscreen .segmented { background: #111A2E; border-color: #1E293B; }
+.board-wrap:fullscreen .segmented button { color: #CBD5E1; }
+.board-wrap:fullscreen .segmented button.on { background: #2563EB; color: #fff; }

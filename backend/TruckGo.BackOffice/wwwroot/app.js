@@ -29,6 +29,13 @@ window.truckgo = {
         try { localStorage.setItem("truckgo.menuOpen", open ? "1" : "0"); } catch (e) { }
     },
 
+    // Live board "TV mode": shows one element full screen (Esc to leave).
+    // The dark look is in board.css (.board-wrap:fullscreen).
+    fullscreen: function (elementId) {
+        var element = document.getElementById(elementId);
+        if (element && element.requestFullscreen) element.requestFullscreen();
+    },
+
     // ---- Maps (Leaflet + OpenStreetMap), used by Components/Shared/MapView.razor ----
     //
     // places: [{ lat, lng, label, kind: "site" | "plant", active, url }]
