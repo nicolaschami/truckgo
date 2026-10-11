@@ -26,6 +26,9 @@ public class TruckGoDb(DbContextOptions<TruckGoDb> options) : DbContext(options)
     public DbSet<Delivery> Deliveries => Set<Delivery>();
     public DbSet<Weighing> Weighings => Set<Weighing>();
 
+    // What the driver app records
+    public DbSet<GpsPosition> Positions => Set<GpsPosition>();
+
     protected override void ConfigureConventions(ModelConfigurationBuilder builder)
     {
         // Enums stored as readable text ("InTransit"), dates always UTC
@@ -94,6 +97,18 @@ public class TruckGoDb(DbContextOptions<TruckGoDb> options) : DbContext(options)
             d.HasOne(x => x.Customer).WithMany().OnDelete(DeleteBehavior.Restrict);
             d.HasOne(x => x.ShipTo).WithMany().OnDelete(DeleteBehavior.Restrict);
             d.HasOne(x => x.Plant).WithMany().OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // --- What the app records ---
+
+        model.Entity<GpsPosition>(p =>
+        {
+            // The phone's id for the point: a repeated send is recognised
+            p.HasIndex(x => x.ClientId).IsUnique();
+            // A truck's trail, in time order (live map, truck-day trace)
+            p.HasIndex(x => new { x.CompanyId, x.TruckPlate, x.RecordedAt });
+            // A delivery's route
+            p.HasIndex(x => x.DeliveryId);
         });
     }
 

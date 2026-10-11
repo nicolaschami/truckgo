@@ -9,6 +9,7 @@ using TruckGo.Admin;
 using TruckGo.Api.Auth;
 using TruckGo.Data;
 using TruckGo.Api.Deliveries;
+using TruckGo.Api.Tracking;
 using TruckGo.Integration;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -94,6 +95,7 @@ if (app.Environment.IsDevelopment())
 var api = app.MapGroup("/api/v1");
 api.MapAuthEndpoints();
 api.MapDeliveryEndpoints();
+api.MapPositionEndpoints();
 
 app.MapGet("/", () => Results.Redirect("/scalar")).ExcludeFromDescription();
 

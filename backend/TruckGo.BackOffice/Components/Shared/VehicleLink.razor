@@ -1,0 +1,24 @@
+@* A truck or trailer on a delivery: its plate, as a link to the vehicle's
+   page when the vehicle is known (a delivery keeps plates, not links). *@
+
+<div class="vehicle-link">
+    <div class="muted">@Label</div>
+    @if (Plate is null)
+    {
+        <span class="muted">—</span>
+    }
+    else if (Id is { } id)
+    {
+        <a href="/vehicles/@id" class="plate-link"><span class="plate">@Plate</span></a>
+    }
+    else
+    {
+        <span class="plate">@Plate</span>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Label { get; set; } = "";
+    [Parameter] public string? Plate { get; set; }
+    [Parameter] public Guid? Id { get; set; }
+}

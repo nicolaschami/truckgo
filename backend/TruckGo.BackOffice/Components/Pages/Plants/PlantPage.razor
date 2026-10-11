@@ -1,5 +1,6 @@
 @page "/plants/{Id:guid}"
 @using System.Globalization
+@inject NavigationManager Nav
 @inject PlantQueries Queries
 
 @* SCREEN 2b — One plant (docs/back-office-design.md): its details and map,
@@ -67,7 +68,7 @@ else
                             </div>
                         </div>
                         <div class="at-plant-delivery">
-                            <span class="code-chip">@p.Code / @t.Number</span>
+                            <a href="/deliveries/@t.DeliveryId" class="code-link"><span class="code-chip">@p.Code / @t.Number</span></a>
                             <div class="muted">@t.CustomerName → @t.ShipToName</div>
                             <div class="muted">@t.Material</div>
                         </div>
@@ -114,7 +115,8 @@ else
             <MudSpacer />
             <span class="muted">By planned time</span>
         </div>
-        <MudTable Items="p.Today" Hover="true" Elevation="0" Breakpoint="Breakpoint.Sm" Class="clean-table">
+        <MudTable Items="p.Today" Hover="true" Elevation="0" Breakpoint="Breakpoint.Sm" Class="clean-table clickable-rows"
+                  OnRowClick="@((TableRowClickEventArgs<PlantDeliveryRow> e) => Nav.NavigateTo($"/deliveries/{e.Item!.DeliveryId}"))">
             <HeaderContent>
                 <MudTh>Planned</MudTh>
                 <MudTh>Delivery</MudTh>

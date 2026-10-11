@@ -1,0 +1,248 @@
+@page "/deliveries"
+@implements IDisposable
+@using System.Globalization
+@inject DeliveryQueries Queries
+@inject PlantQueries Plants
+@inject NavigationManager Nav
+
+@* SCREEN 6a — Delivery list (docs/back-office-design.md).
+   One day of deliveries (planned time), with plant / status filters and a
+   search. Deliveries under way carry the live board's warnings. Today's
+   list refreshes by itself every 30 seconds. *@
+
+<PageTitle>Deliveries · TruckGo</PageTitle>
+
+<PageHeader Title="Deliveries" Subtitle="Follow each delivery from the plant to the customer." />
+
+@* ---- The day: ◀ date ▶ Today ---- *@
+<div class="day-bar">
+    <MudIconButton Icon="@Icons.Material.Rounded.ChevronLeft" OnClick="() => GoToDayAsync(_day.AddDays(-1))" aria-label="Previous day" />
+    <div class="day-label">
+        <div class="day-name">@DayName</div>
+        <div class="muted">@_day.ToString("dddd d MMMM yyyy", CultureInfo.InvariantCulture)</div>
+    </div>
+    <MudIconButton Icon="@Icons.Material.Rounded.ChevronRight" OnClick="() => GoToDayAsync(_day.AddDays(1))" aria-label="Next day" />
+    @if (_day != DateTime.Today)
+    {
+        <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="() => GoToDayAsync(DateTime.Today)">Today</MudButton>
+    }
+    <MudSpacer />
+    @if (_plants.Count > 1)
+    {
+        <div class="segmented" role="group" aria-label="Plant">
+            <button type="button" class="@(_plantId is null ? "on" : "")" @onclick="() => PlantAsync(null)">All plants</button>
+            @foreach (var p in _plants)
+            {
+                <button type="button" class="@(_plantId == p.Id ? "on" : "")" @onclick="() => PlantAsync(p.Id)" title="@p.Name">@p.Code</button>
+            }
+        </div>
+    }
+</div>
+
+@* ---- The day in numbers ---- *@
+<div class="stat-row">
+    <StatTile Icon="@Icons.Material.Rounded.ReceiptLong" Label="Deliveries" Value="@(_rows?.Count ?? 0)" Color="#2563EB" />
+    <StatTile Icon="@Icons.Material.Rounded.Route" Label="In progress" Value="@Count(StatusGroup.InProgress)" Color="#F59E0B" />
+    <StatTile Icon="@Icons.Material.Rounded.TaskAlt" Label="@($"Delivered · {DeliveredTons:0.#} t")" Value="@Count(StatusGroup.Done)" Color="#16A34A" />
+    <StatTile Icon="@Icons.Material.Rounded.WarningAmber" Label="Need attention" Value="@(_rows?.Count(r => r.Attention != Attention.None) ?? 0)" Color="#DC2626" />
+</div>
+
+<MudPaper Class="card" Elevation="0">
+    <div class="card-toolbar">
+        @* Status groups *@
+        <div class="segmented" role="group" aria-label="Status">
+            @foreach (var g in Enum.GetValues<StatusGroup>())
+            {
+                <button type="button" class="@(_group == g ? "on" : "")" @onclick="() => _group = g">
+                    @GroupName(g) <span class="seg-count">@(g == StatusGroup.All ? _rows?.Count ?? 0 : Count(g))</span>
+                </button>
+            }
+        </div>
+        <MudTextField @bind-Value="_search" Placeholder="Search number, order, truck, customer, site" Immediate="true" Clearable="true"
+                      Variant="Variant.Outlined" Margin="Margin.Dense"
+                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Rounded.Search" Class="search-box" />
+    </div>
+
+    <MudTable Items="Visible" Hover="true" Elevation="0" Loading="@(_rows is null)" Breakpoint="Breakpoint.Sm"
+              Class="clean-table clickable-rows" OnRowClick="@((TableRowClickEventArgs<DeliveryRow> e) => Open(e.Item!))"
+              RowClassFunc="@((r, _) => r.Attention == Attention.Danger ? "row-danger" : r.Attention == Attention.Warning ? "row-warning" : "")">
+        <HeaderContent>
+            <MudTh>Planned</MudTh>
+            <MudTh>Delivery</MudTh>
+            <MudTh>Customer → ship-to</MudTh>
+            <MudTh>Material</MudTh>
+            <MudTh Style="text-align:right">Tonnes</MudTh>
+            <MudTh>Truck</MudTh>
+            <MudTh>Status</MudTh>
+            <MudTh></MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Planned">
+                <strong>@Show.Time(context.ScheduledAt)</strong>
+                <div class="muted nowrap">@Show.Time(context.WindowStart)–@Show.Time(context.WindowEnd)</div>
+            </MudTd>
+            <MudTd DataLabel="Delivery">
+                <span class="code-chip">@context.PlantCode / @context.Number</span>
+                <div class="muted nowrap">Order @context.OrderNumber</div>
+            </MudTd>
+            <MudTd DataLabel="Customer → ship-to">
+                <div>@context.CustomerName</div>
+                <div class="muted">@context.ShipToName</div>
+            </MudTd>
+            <MudTd DataLabel="Material">@context.Material</MudTd>
+            <MudTd DataLabel="Tonnes" Style="text-align:right">
+                @* Net weight once weighed, otherwise the ordered tonnes *@
+                @if (context.NetTons is { } net)
+                {
+                    <strong>@Show.Tonnes(net)</strong>
+                    <div class="muted">ordered @Show.Tonnes(context.OrderedTons)</div>
+                }
+                else
+                {
+                    @Show.Tonnes(context.OrderedTons)
+                }
+            </MudTd>
+            <MudTd DataLabel="Truck">
+                @if (context.TruckPlate is { } truck) { <span class="plate plate-sm">@truck</span> }
+                else { <span class="muted">—</span> }
+            </MudTd>
+            <MudTd DataLabel="Status">
+                <span class="badge @Show.StatusBadge(context.Status)">@Show.Status(context.Status)</span>
+                @if (context.Reason is { } reason)
+                {
+                    <MudTooltip Text="@reason">
+                        <MudIcon Icon="@Icons.Material.Rounded.WarningAmber" Size="Size.Small"
+                                 Class="@(context.Attention == Attention.Danger ? "icon-danger" : "icon-warning")" />
+                    </MudTooltip>
+                }
+            </MudTd>
+            <MudTd Style="text-align:right"><MudIcon Icon="@Icons.Material.Rounded.ChevronRight" Class="row-arrow" /></MudTd>
+        </RowTemplate>
+        <NoRecordsContent>
+            <div class="empty-table">
+                <MudIcon Icon="@Icons.Material.Rounded.EventBusy" Size="Size.Large" />
+                <div>@(_rows is { Count: 0 } ? "No delivery planned this day." : "No delivery matches.")</div>
+            </div>
+        </NoRecordsContent>
+    </MudTable>
+</MudPaper>
+
+@code {
+    /// <summary>The chosen day, from the address (?date=2026-10-11); today if none.</summary>
+    [SupplyParameterFromQuery(Name = "date")] public string? DateParameter { get; set; }
+
+    [CascadingParameter] private Task<AuthenticationState> AuthState { get; set; } = default!;
+
+    // The status filter: groups of statuses
+    private enum StatusGroup { All, Planned, InProgress, Done, Cancelled }
+
+    private Guid _company;
+    private DateTime _day = DateTime.Today;    // a local date
+    private Guid? _plantId;
+    private List<BoardPlant> _plants = [];
+    private List<DeliveryRow>? _rows;
+    private StatusGroup _group = StatusGroup.All;
+    private string _search = "";
+    private PeriodicTimer? _timer;
+    private readonly CancellationTokenSource _stop = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if ((await AuthState).User.CompanyId() is not { } company) { _rows = []; return; }
+        _company = company;
+        if (DateTime.TryParseExact(DateParameter, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d)) _day = d;
+
+        var (from, to) = Show.Today();
+        _plants = (await Plants.ListAsync(company, from, to)).Where(p => p.IsActive)
+            .Select(p => new BoardPlant(p.Id, p.Code, p.Name)).ToList();
+        await LoadAsync();
+    }
+
+    // Today's list refreshes by itself (statuses change during the day)
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender && _company != Guid.Empty) _ = RefreshLoopAsync();
+    }
+
+    private async Task RefreshLoopAsync()
+    {
+        _timer = new PeriodicTimer(TimeSpan.FromSeconds(30));
+        try
+        {
+            while (await _timer.WaitForNextTickAsync(_stop.Token))
+            {
+                if (_day != DateTime.Today) continue; // another day does not change
+                await LoadAsync();
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // The page was closed: stop refreshing
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        // The local day as a UTC range
+        var from = _day.ToUniversalTime();
+        _rows = await Queries.ListAsync(_company, from, _day.AddDays(1).ToUniversalTime(), _plantId, DateTime.UtcNow);
+    }
+
+    private async Task GoToDayAsync(DateTime day)
+    {
+        _day = day.Date;
+        // Keep the day in the address, so "back" from a delivery returns here
+        Nav.NavigateTo(_day == DateTime.Today ? "/deliveries" : $"/deliveries?date={_day:yyyy-MM-dd}", replace: true);
+        await LoadAsync();
+    }
+
+    private async Task PlantAsync(Guid? plantId)
+    {
+        _plantId = plantId;
+        await LoadAsync();
+    }
+
+    private string DayName =>
+        _day == DateTime.Today ? "Today" :
+        _day == DateTime.Today.AddDays(-1) ? "Yesterday" :
+        _day == DateTime.Today.AddDays(1) ? "Tomorrow" : _day.ToString("d MMM", CultureInfo.InvariantCulture);
+
+    private static StatusGroup GroupOf(DeliveryStatus s) => s switch
+    {
+        DeliveryStatus.Assigned => StatusGroup.Planned,
+        DeliveryStatus.Delivered => StatusGroup.Done,
+        DeliveryStatus.Cancelled => StatusGroup.Cancelled,
+        _ => StatusGroup.InProgress,
+    };
+
+    private static string GroupName(StatusGroup g) => g switch
+    {
+        StatusGroup.InProgress => "In progress",
+        StatusGroup.Done => "Delivered",
+        _ => g.ToString(),
+    };
+
+    private int Count(StatusGroup g) => _rows?.Count(r => GroupOf(r.Status) == g) ?? 0;
+
+    private double DeliveredTons => _rows?.Where(r => r.Status == DeliveryStatus.Delivered).Sum(r => r.NetTons ?? r.OrderedTons) ?? 0;
+
+    // The rows after the status buttons and the search box
+    private IEnumerable<DeliveryRow> Visible => (_rows ?? [])
+        .Where(r => _group == StatusGroup.All || GroupOf(r.Status) == _group)
+        .Where(r => string.IsNullOrWhiteSpace(_search)
+            || r.Number.Contains(_search, StringComparison.OrdinalIgnoreCase)
+            || r.OrderNumber.Contains(_search, StringComparison.OrdinalIgnoreCase)
+            || (r.TruckPlate ?? "").Contains(_search, StringComparison.OrdinalIgnoreCase)
+            || r.CustomerName.Contains(_search, StringComparison.OrdinalIgnoreCase)
+            || r.ShipToName.Contains(_search, StringComparison.OrdinalIgnoreCase));
+
+    private void Open(DeliveryRow row) => Nav.NavigateTo($"/deliveries/{row.Id}");
+
+    public void Dispose()
+    {
+        _stop.Cancel();
+        _timer?.Dispose();
+        _stop.Dispose();
+    }
+}

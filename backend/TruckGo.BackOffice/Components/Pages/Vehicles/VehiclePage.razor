@@ -1,4 +1,5 @@
 @page "/vehicles/{Id:guid}"
+@inject NavigationManager Nav
 @inject VehicleQueries Queries
 
 @* SCREEN 3b — One truck or trailer (docs/back-office-design.md): its
@@ -35,6 +36,14 @@ else
                 @(isTruck ? "Truck" : "Trailer") · @v.Model@(v.Description is { } desc ? $" · {desc}" : "")
             </MudText>
         </div>
+        @if (isTruck)
+        {
+            @* The truck's GPS trail of today (Map & trace) — trailers have no GPS of their own *@
+            <div class="page-actions">
+                <MudButton Href="@($"/map?truck={Uri.EscapeDataString(v.Plate)}")" Variant="Variant.Filled" Color="Color.Primary"
+                           StartIcon="@Icons.Material.Rounded.Route" DropShadow="false">Today's route</MudButton>
+            </div>
+        }
     </div>
 
     @* ---- What it is doing now ---- *@
@@ -48,7 +57,7 @@ else
                 <div class="at-plant-truck">
                     <MudIcon Icon="@Icons.Material.Rounded.ReceiptLong" />
                     <div>
-                        <span class="code-chip">@d.PlantCode / @d.Number</span>
+                        <a href="/deliveries/@d.DeliveryId" class="code-link"><span class="code-chip">@d.PlantCode / @d.Number</span></a>
                         <div class="muted mt-1">@d.Material</div>
                     </div>
                 </div>
@@ -120,7 +129,8 @@ else
             <MudSpacer />
             <span class="muted">Last @VehicleQueries.RecentDeliveryCount, newest first</span>
         </div>
-        <MudTable Items="v.RecentDeliveries" Hover="true" Elevation="0" Breakpoint="Breakpoint.Sm" Class="clean-table">
+        <MudTable Items="v.RecentDeliveries" Hover="true" Elevation="0" Breakpoint="Breakpoint.Sm" Class="clean-table clickable-rows"
+                  OnRowClick="@((TableRowClickEventArgs<VehicleDeliveryRow> e) => Nav.NavigateTo($"/deliveries/{e.Item!.DeliveryId}"))">
             <HeaderContent>
                 <MudTh>Delivery</MudTh>
                 <MudTh>Planned</MudTh>

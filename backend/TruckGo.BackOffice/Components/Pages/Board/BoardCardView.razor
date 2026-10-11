@@ -80,9 +80,9 @@
     // How full the waiting bar is: 100% = the Settings limit reached
     private int BarPercent(int limit) => (int)Math.Clamp(Card.Minutes / limit * 100, 3, 100);
 
-    // A click opens the truck
+    // A click opens the delivery
     private void Open()
     {
-        if (Card.TruckId is { } id) Nav.NavigateTo($"/vehicles/{id}");
+        Nav.NavigateTo($"/deliveries/{Card.DeliveryId}");
     }
 }

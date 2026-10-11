@@ -1,0 +1,218 @@
+@page "/deliveries/{Id:guid}"
+@using System.Globalization
+@inject DeliveryQueries Queries
+
+@* SCREEN 6b — One delivery (docs/back-office-design.md): where it is in its
+   journey, any warning, customer and site, load, truck and trailer, the
+   weighbridge readings, and a map from the plant to the site. The timeline
+   with times and causes, the driver and the proof of delivery come with
+   the app's data (backend phase 2) — the page says so. *@
+
+<PageTitle>@(_d is { } t ? $"{t.PlantCode} / {t.Number}" : "Delivery") · TruckGo</PageTitle>
+
+<BackButton Href="@BackHref" Text="Deliveries" />
+
+@if (_notFound)
+{
+    <MudAlert Severity="Severity.Warning">This delivery does not exist.</MudAlert>
+}
+else if (_d is not { } d)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else
+{
+    <div class="page-header">
+        <div>
+            <div class="title-row">
+                <MudText Typo="Typo.h5" HtmlTag="h1">Delivery <span class="code-chip code-lg">@d.PlantCode / @d.Number</span></MudText>
+                <span class="badge @Show.StatusBadge(d.Status)">@Show.Status(d.Status)</span>
+            </div>
+            <MudText Typo="Typo.body2" Class="mt-1 muted">
+                Order @d.OrderNumber · planned @Show.DateTime(d.ScheduledAt) · window @Show.Time(d.WindowStart)–@Show.Time(d.WindowEnd)
+            </MudText>
+        </div>
+        <div class="page-actions">
+            @* The route the truck drove for this delivery (Map & trace) *@
+            <MudButton Href="@($"/map?delivery={d.Id}")" Variant="Variant.Filled" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Rounded.Route" DropShadow="false">Show the route</MudButton>
+        </div>
+    </div>
+
+    @* ---- Where it is in its journey ---- *@
+    @if (d.Status == DeliveryStatus.Cancelled)
+    {
+        <div class="instructions cancelled-banner">
+            <MudIcon Icon="@Icons.Material.Rounded.Cancel" />
+            <div><strong>Cancelled</strong><div>The dispatching system cancelled this delivery.</div></div>
+        </div>
+    }
+    else
+    {
+        <MudPaper Class="card pad mb-5" Elevation="0">
+            <div class="journey">
+                @foreach (var (status, label, icon) in Journey)
+                {
+                    var state = (int)status < (int)d.Status ? "done" : status == d.Status ? "now" : "todo";
+                    <div class="step step-@state">
+                        <div class="step-dot"><MudIcon Icon="@(state == "done" ? Icons.Material.Rounded.Check : icon)" Size="Size.Small" /></div>
+                        <div class="step-label">@label</div>
+                    </div>
+                }
+            </div>
+        </MudPaper>
+    }
+
+    @* ---- Why it needs attention (the live board's rules) ---- *@
+    @if (d.Reason is { } reason)
+    {
+        <div class="instructions @(d.Attention == Attention.Danger ? "danger-banner" : "")">
+            <MudIcon Icon="@Icons.Material.Rounded.WarningAmber" />
+            <div><strong>Needs attention</strong><div>@reason</div></div>
+        </div>
+    }
+
+    <div class="detail-grid">
+        @* ---- Customer and site ---- *@
+        <MudPaper Class="card pad" Elevation="0">
+            <div class="card-title"><MudIcon Icon="@Icons.Material.Rounded.Storefront" /> Customer and site</div>
+            <InfoList Items="@([
+                ("Customer", $"{d.CustomerName} ({d.CustomerCode})"),
+                ("Ship-to", $"{d.ShipToName} ({d.ShipToCode})"),
+                ("Address", Show.Line(d.ShipToAddress, d.ShipToCity)),
+            ])" />
+            <div class="link-row">
+                <a class="link" href="/customers/@d.CustomerId">Open the customer</a>
+                <a class="link" href="/customers/ship-tos/@d.ShipToId">Open the ship-to</a>
+            </div>
+            @if (d.ContactName is not null || d.ContactPhone is not null)
+            {
+                <div class="contact mt-4">
+                    <Initials Name="@(d.ContactName ?? "?")" />
+                    <div>
+                        <div class="person-name">@(d.ContactName ?? "Site contact")</div>
+                        @if (d.ContactPhone is { } phone) { <a href="tel:@phone.Replace(" ", "")" class="link">@phone</a> }
+                    </div>
+                </div>
+            }
+            @if (!string.IsNullOrWhiteSpace(d.DeliveryInstructions))
+            {
+                <div class="instructions mt-4 mb-0">
+                    <MudIcon Icon="@Icons.Material.Rounded.Campaign" />
+                    <div><strong>Site instructions</strong><div>@d.DeliveryInstructions</div></div>
+                </div>
+            }
+        </MudPaper>
+
+        @* ---- Map: plant → site ---- *@
+        <MudPaper Class="card" Elevation="0">
+            <div class="card-title pad-x"><MudIcon Icon="@Icons.Material.Rounded.Map" /> From the plant to the site
+                <span class="muted card-title-note">@d.DistanceKm.ToString("0.#") km planned</span>
+            </div>
+            <MapView Places="_places" RadiusM="d.GeofenceRadiusM" Height="330" />
+        </MudPaper>
+    </div>
+
+    <div class="detail-grid mt-5">
+        @* ---- Load, truck and trailer ---- *@
+        <MudPaper Class="card pad" Elevation="0">
+            <div class="card-title"><MudIcon Icon="@Icons.Material.Rounded.Inventory2" /> Load and vehicles</div>
+            <InfoList Items="@([
+                ("Plant", $"{d.PlantName} ({d.PlantCode})"),
+                ("Material", d.Material),
+                ("Ordered", Show.Tonnes(d.OrderedTons)),
+                ("Notes", d.Notes),
+            ])" />
+            <div class="vehicle-pair">
+                <VehicleLink Label="Truck" Plate="@d.TruckPlate" Id="@d.TruckId" />
+                <VehicleLink Label="Trailer" Plate="@d.TrailerPlate" Id="@d.TrailerId" />
+            </div>
+            <ExtraInfo Values="d.Extra" />
+        </MudPaper>
+
+        @* ---- Weighbridge ---- *@
+        <MudPaper Class="card pad" Elevation="0">
+            <div class="card-title"><MudIcon Icon="@Icons.Material.Rounded.Scale" /> Weighbridge</div>
+            <div class="weights">
+                <div class="weight"><div class="muted">1st weight (empty)</div><div class="weight-value">@(d.TareTons is { } t1 ? Show.Tonnes(t1) : "—")</div></div>
+                <div class="weight"><div class="muted">2nd weight (loaded)</div><div class="weight-value">@(d.GrossTons is { } t2 ? Show.Tonnes(t2) : "—")</div></div>
+                <div class="weight weight-net"><div class="muted">Net</div><div class="weight-value">@(d.NetTons is { } n ? Show.Tonnes(n) : "—")</div></div>
+            </div>
+            @if (d.Weighings.Count == 0)
+            {
+                <div class="muted mt-3">Not weighed yet. The weights come from the weighbridge through your system.</div>
+            }
+            else
+            {
+                @* Every reading, re-weighs included (the latest of each kind counts) *@
+                <table class="mini-table mt-3">
+                    <tr><th>Reading</th><th>Weight</th><th>Time</th><th>Ticket</th><th>Weighbridge</th></tr>
+                    @foreach (var w in d.Weighings)
+                    {
+                        <tr>
+                            <td>@(w.Kind == WeighingKind.First ? "1st" : "2nd")</td>
+                            <td><strong>@Show.Tonnes(w.Tons)</strong></td>
+                            <td>@Show.DateTime(w.WeighedAt)</td>
+                            <td>@(w.TicketNumber ?? "—")</td>
+                            <td>@(w.Weighbridge ?? "—")</td>
+                        </tr>
+                    }
+                </table>
+            }
+        </MudPaper>
+    </div>
+
+    @* ---- What the app will add (backend phase 2) ---- *@
+    <MudPaper Class="card pad mt-5 coming-card" Elevation="0">
+        <div class="card-title"><MudIcon Icon="@Icons.Material.Rounded.PhoneAndroid" /> Coming with the driver app's data</div>
+        <ul class="coming-list">
+            <li><MudIcon Icon="@Icons.Material.Rounded.Timeline" Size="Size.Small" /> <span><strong>Timeline</strong> — each status with its time and cause (geofence, weight, driver button, signature)</span></li>
+            <li><MudIcon Icon="@Icons.Material.Rounded.Timer" Size="Size.Small" /> <span><strong>Durations</strong> — waiting at the plant, loading, travel, waiting at the site, unloading</span></li>
+            <li><MudIcon Icon="@Icons.Material.Rounded.Badge" Size="Size.Small" /> <span><strong>Driver</strong> — who drove this delivery</span></li>
+            <li><MudIcon Icon="@Icons.Material.Rounded.Draw" Size="Size.Small" /> <span><strong>Proof of delivery</strong> — signature, names and notes, downloadable as PDF</span></li>
+        </ul>
+    </MudPaper>
+
+    <ReceivedNote LastReceivedAt="d.LastReceivedAt" />
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+    [CascadingParameter] private Task<AuthenticationState> AuthState { get; set; } = default!;
+
+    private DeliveryDetail? _d;
+    private bool _notFound;
+    private IReadOnlyList<MapView.Place> _places = [];
+
+    // The steps of a delivery, in order (Cancelled is shown as a banner instead)
+    private static readonly (DeliveryStatus Status, string Label, string Icon)[] Journey =
+    [
+        (DeliveryStatus.Assigned, "Assigned", Icons.Material.Rounded.Assignment),
+        (DeliveryStatus.AtPlant, "At plant", Icons.Material.Rounded.Factory),
+        (DeliveryStatus.Loading, "Loading", Icons.Material.Rounded.Scale),
+        (DeliveryStatus.InTransit, "In transit", Icons.Material.Rounded.LocalShipping),
+        (DeliveryStatus.ArrivedAtSite, "At site", Icons.Material.Rounded.Place),
+        (DeliveryStatus.Unloading, "Unloading", Icons.Material.Rounded.Download),
+        (DeliveryStatus.Delivered, "Delivered", Icons.Material.Rounded.TaskAlt),
+    ];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var company = (await AuthState).User.CompanyId();
+        _d = company is { } id ? await Queries.GetAsync(id, Id, DateTime.UtcNow) : null;
+        _notFound = _d is null;
+        if (_d is not { } d) return;
+
+        // The plant (blue) and the site (amber), each with its geofence circle
+        _places =
+        [
+            new MapView.Place(d.PlantLatitude, d.PlantLongitude, $"{d.PlantCode} · {d.PlantName}", "plant", true, $"/plants/{d.PlantId}"),
+            new MapView.Place(d.ShipToLatitude, d.ShipToLongitude, d.ShipToName, "site", true, $"/customers/ship-tos/{d.ShipToId}"),
+        ];
+    }
+
+    // Back to the list, on the day of this delivery
+    private string BackHref => _d is { } d
+        ? $"/deliveries?date={d.ScheduledAt.ToLocalTime():yyyy-MM-dd}"
+        : "/deliveries";
+}

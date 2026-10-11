@@ -32,6 +32,8 @@ builder.Services.AddScoped<CustomerQueries>();
 builder.Services.AddScoped<PlantQueries>();
 builder.Services.AddScoped<VehicleQueries>();
 builder.Services.AddScoped<LiveBoardQueries>();
+builder.Services.AddScoped<DeliveryQueries>();
+builder.Services.AddScoped<MapQueries>();
 
 // LOGIN: a cookie, kept for a working day and renewed while the user is active
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)

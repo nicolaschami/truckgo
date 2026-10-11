@@ -46,6 +46,7 @@ public static class VehicleStates
 
 /// <summary>The delivery a vehicle is working on now (null when idle).</summary>
 public record CurrentDelivery(
+    Guid DeliveryId,      // to open the delivery's page
     string PlantCode,
     string Number,
     string CustomerName,
@@ -69,6 +70,7 @@ public record VehicleRow(
 
 /// <summary>A delivery done (or planned) with the vehicle, for its page.</summary>
 public record VehicleDeliveryRow(
+    Guid DeliveryId,      // to open the delivery's page
     string PlantCode,
     string Number,
     DateTime ScheduledAt,
@@ -146,7 +148,7 @@ public class VehicleQueries(IDbContextFactory<TruckGoDb> dbFactory)
             .Where(d => d.CompanyId == companyId && (d.TruckPlate == v.Plate || d.TrailerPlate == v.Plate))
             .OrderByDescending(d => d.ScheduledAt)
             .Take(RecentDeliveryCount)
-            .Select(d => new VehicleDeliveryRow(d.Plant.ExternalCode, d.Number, d.ScheduledAt, d.Customer.Name,
+            .Select(d => new VehicleDeliveryRow(d.Id, d.Plant.ExternalCode, d.Number, d.ScheduledAt, d.Customer.Name,
                 d.ShipTo.Name, d.Material, d.OrderedTons, d.TruckPlate, d.TrailerPlate, d.Status))
             .ToListAsync();
 
@@ -167,7 +169,7 @@ public class VehicleQueries(IDbContextFactory<TruckGoDb> dbFactory)
             {
                 d.TruckPlate,
                 d.TrailerPlate,
-                Delivery = new CurrentDelivery(d.Plant.ExternalCode, d.Number, d.Customer.Name, d.ShipTo.Name,
+                Delivery = new CurrentDelivery(d.Id, d.Plant.ExternalCode, d.Number, d.Customer.Name, d.ShipTo.Name,
                     d.Material, d.Status, d.UpdatedAt),
             })
             .ToListAsync();

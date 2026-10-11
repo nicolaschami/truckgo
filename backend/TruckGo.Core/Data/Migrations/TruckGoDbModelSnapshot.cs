@@ -367,6 +367,60 @@ namespace TruckGo.Data.Migrations
                     b.ToTable("ForwardingAgents");
                 });
 
+            modelBuilder.Entity("TruckGo.Data.GpsPosition", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<double?>("AccuracyM")
+                        .HasColumnType("double precision");
+
+                    b.Property<Guid>("ClientId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("DeliveryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("DriverId")
+                        .HasColumnType("uuid");
+
+                    b.Property<double?>("Heading")
+                        .HasColumnType("double precision");
+
+                    b.Property<double>("Latitude")
+                        .HasColumnType("double precision");
+
+                    b.Property<double>("Longitude")
+                        .HasColumnType("double precision");
+
+                    b.Property<DateTime>("ReceivedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("RecordedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<double?>("SpeedKmh")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("TruckPlate")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClientId")
+                        .IsUnique();
+
+                    b.HasIndex("DeliveryId");
+
+                    b.HasIndex("CompanyId", "TruckPlate", "RecordedAt");
+
+                    b.ToTable("Positions");
+                });
+
             modelBuilder.Entity("TruckGo.Data.Plant", b =>
                 {
                     b.Property<Guid>("Id")

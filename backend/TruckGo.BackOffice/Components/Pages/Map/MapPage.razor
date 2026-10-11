@@ -1,0 +1,398 @@
+@page "/map"
+@implements IAsyncDisposable
+@using System.Globalization
+@inject MapQueries Queries
+@inject VehicleQueries Vehicles
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+
+@* SCREEN 8 — Map & trace (docs/back-office-design.md).
+   LIVE: every truck at its last GPS point, coloured by state, refreshed
+   every 15 s, with the list of trucks beside the map.
+   TRACE: the route of one delivery (/map?delivery=…) or of a truck for a
+   day (/map?truck=AB-1234&date=2026-10-11), its unexpected stops, and a
+   replay slider. Drawing is done in the browser (wwwroot/map.js). *@
+
+<PageTitle>Map & trace · TruckGo</PageTitle>
+
+<PageHeader Title="Map & trace" Subtitle="Where the trucks are now — and the route any delivery took.">
+    <Actions>
+        <div class="segmented" role="group" aria-label="View">
+            <button type="button" class="@(_tab == Tab.Live ? "on" : "")" @onclick="ShowLive">
+                <span class="live-dot live-dot-inline"></span> Live
+            </button>
+            <button type="button" class="@(_tab == Tab.Trace ? "on" : "")" @onclick="ShowTraceTab">Trace</button>
+        </div>
+    </Actions>
+</PageHeader>
+
+@if (_tab == Tab.Live)
+{
+    @* ================= LIVE ================= *@
+    <div class="map-layout">
+        <MudPaper Class="card map-card" Elevation="0">
+            <div id="live-map" class="map-big"></div>
+        </MudPaper>
+
+        <MudPaper Class="card map-side" Elevation="0">
+            <div class="card-toolbar">
+                <div class="card-title"><MudIcon Icon="@Icons.Material.Rounded.LocalShipping" /> Trucks</div>
+                <MudSpacer />
+                <span class="muted">@(_live is { } l ? "updated " + Show.Time(l.At) : "")</span>
+            </div>
+            @if (_live is null)
+            {
+                <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+            }
+            else if (_live.Trucks.Count == 0)
+            {
+                <div class="empty-table">
+                    <MudIcon Icon="@Icons.Material.Rounded.WifiOff" Size="Size.Large" />
+                    <div>No truck has sent its position in the last @MapQueries.LiveHours hours.</div>
+                </div>
+            }
+            else
+            {
+                <div class="truck-list">
+                    @foreach (var t in _live.Trucks)
+                    {
+                        <button type="button" class="truck-row @(t.Stale ? "stale" : "")" @onclick="() => FocusAsync(t.Plate)">
+                            <span class="state-dot st-@t.State"></span>
+                            <span class="truck-row-main">
+                                <span class="plate plate-sm">@t.Plate</span>
+                                <span class="truck-row-label">@(t.DeliveryLabel ?? "Idle")</span>
+                            </span>
+                            <span class="truck-row-side">
+                                <span class="badge @Show.StateBadge(t.State)">@Show.State(t.State)</span>
+                                <span class="muted">@Show.Ago(t.At)</span>
+                            </span>
+                        </button>
+                    }
+                </div>
+            }
+            <div class="map-legend">
+                <span><span class="state-dot st-AtPlant"></span> At plant</span>
+                <span><span class="state-dot st-OnTheRoad"></span> On the road</span>
+                <span><span class="state-dot st-AtShipTo"></span> At ship-to</span>
+                <span><span class="state-dot st-Idle"></span> Idle</span>
+            </div>
+        </MudPaper>
+    </div>
+}
+else
+{
+    @* ================= TRACE ================= *@
+    <MudPaper Class="card pad mb-4" Elevation="0">
+        <div class="trace-picker">
+            @if (_trace is { DeliveryId: { } deliveryId } dt)
+            {
+                @* The route of one delivery *@
+                <div>
+                    <div class="muted">Route of delivery</div>
+                    <div class="trace-title"><span class="code-chip code-lg">@dt.Title</span> <span class="muted">@dt.Subtitle</span></div>
+                </div>
+                <MudSpacer />
+                <MudButton Href="@($"/deliveries/{deliveryId}")" Variant="Variant.Outlined" Color="Color.Primary"
+                           StartIcon="@Icons.Material.Rounded.ReceiptLong">Open the delivery</MudButton>
+                @if (dt.TruckPlate is { } p)
+                {
+                    <MudButton OnClick="() => TruckDayAsync(p, _day)" Variant="Variant.Text" Color="Color.Primary"
+                               StartIcon="@Icons.Material.Rounded.Today">Whole day of @p</MudButton>
+                }
+            }
+            else
+            {
+                @* The route of one truck over a day *@
+                <MudSelect T="string" Value="_truck" ValueChanged="@(p => TruckDayAsync(p, _day))" Label="Truck"
+                           Variant="Variant.Outlined" Margin="Margin.Dense" Class="truck-select">
+                    @foreach (var plate in _trucks)
+                    {
+                        <MudSelectItem Value="plate">@plate</MudSelectItem>
+                    }
+                </MudSelect>
+                <div class="day-bar mb-0">
+                    <MudIconButton Icon="@Icons.Material.Rounded.ChevronLeft" OnClick="() => TruckDayAsync(_truck, _day.AddDays(-1))" aria-label="Previous day" Disabled="@(_truck is null)" />
+                    <div class="day-label">
+                        <div class="day-name">@(_day == DateTime.Today ? "Today" : _day.ToString("d MMM", CultureInfo.InvariantCulture))</div>
+                        <div class="muted">@_day.ToString("dddd d MMMM", CultureInfo.InvariantCulture)</div>
+                    </div>
+                    <MudIconButton Icon="@Icons.Material.Rounded.ChevronRight" OnClick="() => TruckDayAsync(_truck, _day.AddDays(1))" aria-label="Next day" Disabled="@(_truck is null || _day >= DateTime.Today)" />
+                </div>
+            }
+        </div>
+    </MudPaper>
+
+    @if (_trace is null)
+    {
+        <MudPaper Class="card pad" Elevation="0">
+            <div class="empty-table">
+                <MudIcon Icon="@Icons.Material.Rounded.Route" Size="Size.Large" />
+                <div>Choose a truck to see its route of the day — or open a delivery and click “Show the route”.</div>
+            </div>
+        </MudPaper>
+    }
+    else
+    {
+        var tr = _trace;
+        @* ---- The route in numbers ---- *@
+        <div class="stat-row">
+            <StatTile Icon="@Icons.Material.Rounded.Straighten" Label="km driven" Value="@((int)Math.Round(tr.DistanceKm))" Color="#2563EB" />
+            <StatTile Icon="@Icons.Material.Rounded.Schedule" Label="minutes on the route" Value="@RouteMinutes" Color="#0891B2" />
+            <StatTile Icon="@Icons.Material.Rounded.PauseCircle" Label="@($"Stops over {tr.LongStopMinutes} min")" Value="@tr.Stops.Count" Color="@(tr.Stops.Count > 0 ? "#F59E0B" : "#16A34A")" />
+            <StatTile Icon="@Icons.Material.Rounded.GpsFixed" Label="GPS points" Value="@tr.Points.Count" Color="#7C3AED" />
+        </div>
+
+        <MudPaper Class="card map-card" Elevation="0">
+            <div id="trace-map" class="map-big"></div>
+
+            @* ---- Replay ---- *@
+            @if (tr.Points.Count > 1)
+            {
+                var p = tr.Points[Math.Clamp(_index, 0, tr.Points.Count - 1)];
+                <div class="replay">
+                    <MudIconButton Icon="@(_playing ? Icons.Material.Rounded.Pause : Icons.Material.Rounded.PlayArrow)"
+                                   Color="Color.Primary" Variant="Variant.Filled" OnClick="TogglePlayAsync"
+                                   aria-label="@(_playing ? "Pause" : "Play")" Class="replay-btn" />
+                    <MudSlider T="int" Min="0" Max="@(tr.Points.Count - 1)" Value="_index" ValueChanged="SeekAsync"
+                               Color="Color.Primary" Class="replay-slider" />
+                    <div class="replay-now">
+                        <strong>@Show.Time(p.At)</strong>
+                        <span class="muted">@(p.SpeedKmh is { } s && s > 3 ? $"{s:0} km/h" : "stopped")</span>
+                    </div>
+                </div>
+            }
+        </MudPaper>
+
+        @if (tr.Points.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info" Class="mt-4">No GPS point for this route yet — the app sends them while the driver works.</MudAlert>
+        }
+
+        @* ---- Unexpected stops ---- *@
+        @if (tr.Stops.Count > 0)
+        {
+            <MudPaper Class="card mt-5" Elevation="0">
+                <div class="card-toolbar">
+                    <div class="card-title"><MudIcon Icon="@Icons.Material.Rounded.PauseCircle" /> Unexpected stops</div>
+                    <MudSpacer />
+                    <span class="muted">Standing still over @tr.LongStopMinutes min, outside the plant and the site (Settings)</span>
+                </div>
+                <table class="mini-table stops-table">
+                    <tr><th>From</th><th>To</th><th>Duration</th><th>Where</th></tr>
+                    @foreach (var s in tr.Stops)
+                    {
+                        <tr>
+                            <td>@Show.Time(s.From)</td>
+                            <td>@Show.Time(s.To)</td>
+                            <td><strong>@((int)s.Minutes) min</strong></td>
+                            <td><a class="link" target="_blank" href="@($"https://www.google.com/maps/search/?api=1&query={s.Latitude.ToString(CultureInfo.InvariantCulture)},{s.Longitude.ToString(CultureInfo.InvariantCulture)}")">Open in Google Maps</a></td>
+                        </tr>
+                    }
+                </table>
+            </MudPaper>
+        }
+    }
+}
+
+@code {
+    // From the address: /map?delivery=… or /map?truck=AB-1234&date=2026-10-11
+    [SupplyParameterFromQuery(Name = "delivery")] public Guid? DeliveryParameter { get; set; }
+    [SupplyParameterFromQuery(Name = "truck")] public string? TruckParameter { get; set; }
+    [SupplyParameterFromQuery(Name = "date")] public string? DateParameter { get; set; }
+
+    [CascadingParameter] private Task<AuthenticationState> AuthState { get; set; } = default!;
+
+    private enum Tab { Live, Trace }
+
+    private Guid _company;
+    private Tab _tab = Tab.Live;
+    private LiveMap? _live;
+    private Trace? _trace;
+    private List<string> _trucks = [];
+    private string? _truck;
+    private DateTime _day = DateTime.Today;
+    private bool _drawPending;              // draw the map once the page has rendered
+    private int _index;                     // replay position (point number)
+    private bool _playing;
+    private PeriodicTimer? _liveTimer;
+    private readonly CancellationTokenSource _stop = new();
+    private CancellationTokenSource? _play;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if ((await AuthState).User.CompanyId() is not { } company) return;
+        _company = company;
+        _trucks = (await Vehicles.ListAsync(company))
+            .Where(v => v.Kind == VehicleKind.Truck && v.IsActive).Select(v => v.Plate).ToList();
+    }
+
+    // The address decides what to show (also when a popup link changes it)
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_company == Guid.Empty) return;
+        StopPlaying();
+        if (DeliveryParameter is { } deliveryId)
+        {
+            _tab = Tab.Trace;
+            _trace = await Queries.DeliveryTraceAsync(_company, deliveryId);
+            _truck = _trace?.TruckPlate;
+        }
+        else if (!string.IsNullOrWhiteSpace(TruckParameter))
+        {
+            _tab = Tab.Trace;
+            _truck = TruckParameter;
+            if (DateTime.TryParseExact(DateParameter, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d)) _day = d;
+            _trace = await Queries.TruckTraceAsync(_company, _truck, _day.ToUniversalTime(), _day.AddDays(1).ToUniversalTime());
+        }
+        else if (_tab == Tab.Live)
+        {
+            _live = await Queries.LiveAsync(_company, DateTime.UtcNow);
+        }
+        _index = 0;
+        _drawPending = true;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && _company != Guid.Empty) _ = LiveLoopAsync();
+        if (!_drawPending) return;
+        _drawPending = false;
+        await DrawAsync();
+    }
+
+    private async Task DrawAsync()
+    {
+        if (_tab == Tab.Live && _live is { } live)
+        {
+            await JS.InvokeVoidAsync("truckgoMap.live", "live-map",
+                live.Trucks.Select(t => new
+                {
+                    plate = t.Plate, lat = t.Latitude, lng = t.Longitude, at = t.At, speedKmh = t.SpeedKmh,
+                    state = t.State.ToString(), deliveryId = t.DeliveryId, deliveryLabel = t.DeliveryLabel,
+                    vehicleId = t.VehicleId, stale = t.Stale,
+                }),
+                Places(live.Places), live.GeofenceRadiusM);
+        }
+        else if (_tab == Tab.Trace && _trace is { } tr)
+        {
+            await JS.InvokeVoidAsync("truckgoMap.trace", "trace-map",
+                tr.Points.Select(p => new { lat = p.Latitude, lng = p.Longitude }),
+                Places(tr.Places),
+                tr.Stops.Select(s => new { lat = s.Latitude, lng = s.Longitude, minutes = s.Minutes }),
+                tr.GeofenceRadiusM, tr.TruckPlate);
+        }
+    }
+
+    private static object Places(IEnumerable<MapPlace> places) =>
+        places.Select(p => new { kind = p.Kind, label = p.Label, lat = p.Latitude, lng = p.Longitude, url = p.Url });
+
+    // The live map refreshes every 15 seconds while it is shown
+    private async Task LiveLoopAsync()
+    {
+        _liveTimer = new PeriodicTimer(TimeSpan.FromSeconds(15));
+        try
+        {
+            while (await _liveTimer.WaitForNextTickAsync(_stop.Token))
+            {
+                if (_tab != Tab.Live) continue;
+                _live = await Queries.LiveAsync(_company, DateTime.UtcNow);
+                await InvokeAsync(async () => { StateHasChanged(); await DrawAsync(); });
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // The page was closed
+        }
+    }
+
+    // ---- Tabs and choices (they change the address, so links can be shared) ----
+
+    private void ShowLive()
+    {
+        if (_tab == Tab.Live) return;
+        _tab = Tab.Live;
+        Nav.NavigateTo("/map");
+    }
+
+    private void ShowTraceTab()
+    {
+        if (_tab == Tab.Trace) return;
+        _tab = Tab.Trace;
+        _trace = null;
+        _drawPending = true;
+    }
+
+    private Task TruckDayAsync(string? plate, DateTime day)
+    {
+        if (plate is null) return Task.CompletedTask;
+        Nav.NavigateTo($"/map?truck={Uri.EscapeDataString(plate)}&date={day:yyyy-MM-dd}");
+        return Task.CompletedTask;
+    }
+
+    private async Task FocusAsync(string plate) => await JS.InvokeVoidAsync("truckgoMap.focusTruck", "live-map", plate);
+
+    // ---- Replay ----
+
+    private async Task SeekAsync(int index)
+    {
+        _index = index;
+        await JS.InvokeVoidAsync("truckgoMap.cursor", "trace-map", index);
+    }
+
+    private async Task TogglePlayAsync()
+    {
+        if (_playing) { StopPlaying(); return; }
+        if (_trace is not { Points.Count: > 1 } tr) return;
+        if (_index >= tr.Points.Count - 1) _index = 0;
+        _playing = true;
+        _play = new CancellationTokenSource();
+        var token = _play.Token;
+        // The whole route in about 20 seconds, whatever its length
+        var step = Math.Max(1, tr.Points.Count / 100);
+        using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(200));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(token))
+            {
+                _index = Math.Min(_index + step, tr.Points.Count - 1);
+                await JS.InvokeVoidAsync("truckgoMap.cursor", "trace-map", _index);
+                StateHasChanged();
+                if (_index >= tr.Points.Count - 1) break;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Paused
+        }
+        _playing = false;
+        StateHasChanged();
+    }
+
+    private void StopPlaying()
+    {
+        _play?.Cancel();
+        _playing = false;
+    }
+
+    // Minutes from the first to the last GPS point of the route
+    private int RouteMinutes => _trace is { Points.Count: > 1 } t
+        ? (int)(t.Points[^1].At - t.Points[0].At).TotalMinutes
+        : 0;
+
+    public async ValueTask DisposeAsync()
+    {
+        StopPlaying();
+        _stop.Cancel();
+        _liveTimer?.Dispose();
+        try
+        {
+            await JS.InvokeVoidAsync("truckgo.removeMap", "live-map");
+            await JS.InvokeVoidAsync("truckgo.removeMap", "trace-map");
+        }
+        catch (JSDisconnectedException)
+        {
+            // The browser tab is already closed
+        }
+        _stop.Dispose();
+    }
+}

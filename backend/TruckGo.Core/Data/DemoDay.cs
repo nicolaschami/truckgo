@@ -60,7 +60,121 @@ public static class DemoDay
             // The status, as the app would have moved it, and since when
             delivery.Status = s.Status;
             delivery.UpdatedAt = Ago(s.SinceMin);
+
+            // The GPS trail the app would have sent (replaced on every run)
+            await db.Positions.Where(p => p.DeliveryId == delivery.Id).ExecuteDeleteAsync();
+            var plant = await db.Plants.SingleAsync(p => p.Id == delivery.PlantId);
+            var site = await db.ShipTos.SingleAsync(x => x.Id == delivery.ShipToId);
+            db.Positions.AddRange(Trail(company.Id, delivery.Id, s.Truck, s.Status, s.SinceMin, nowUtc,
+                (plant.Latitude, plant.Longitude), (site.Latitude, site.Longitude), int.Parse(s.No)));
         }
         await db.SaveChangesAsync();
+    }
+
+    // ------------------------------------------------------------------
+    // The demo GPS trails: one point a minute, like the app sends them
+    // ------------------------------------------------------------------
+
+    private const int LoadingMinutes = 25;   // time spent at the plant before leaving
+    private const int UnloadedMinutes = 10;  // "unloading since" starts this long after arrival
+    private const int SiteMinutes = 25;      // time at the site for a delivered one
+
+    /// <summary>
+    /// A believable trail for one delivery, ending now (or when it was
+    /// delivered): at the plant, along a curved road to the site, at the site.
+    /// The late truck (on the road longer than the trip takes) gets a
+    /// 20-minute stop half way — it shows on the trace as an unexpected stop.
+    /// </summary>
+    private static IEnumerable<GpsPosition> Trail(Guid companyId, Guid deliveryId, string plate,
+        DeliveryStatus status, int sinceMin, DateTime now,
+        (double Lat, double Lng) plant, (double Lat, double Lng) site, int seed)
+    {
+        var rnd = new Random(seed);
+        var roadKm = Queries.Geo.DistanceM(plant.Lat, plant.Lng, site.Lat, site.Lng) / 1000 * 1.3; // roads are not straight
+        var travel = Math.Max(15, (int)(roadKm / 45 * 60));                                         // at about 45 km/h
+        var points = new List<(int MinutesAgo, double Lat, double Lng, double Speed)>();
+
+        void Stay(int fromAgo, int toAgo, (double Lat, double Lng) at, double jitterM)
+        {
+            for (var m = fromAgo; m > toAgo; m--)
+            {
+                var (lat, lng) = Jitter(at, jitterM, rnd);
+                points.Add((m, lat, lng, rnd.NextDouble() * 3));
+            }
+        }
+
+        // Drive from the plant (minute fromAgo) towards the site, reaching
+        // "progress" (0..1) at minute toAgo; an optional stop half way
+        void Drive(int fromAgo, int toAgo, double progress, int stopMinutes)
+        {
+            var total = fromAgo - toAgo;
+            var moving = Math.Max(1, total - stopMinutes);
+            var covered = 0;
+            for (var m = fromAgo; m > toAgo; m--)
+            {
+                var elapsed = fromAgo - m;
+                var stopped = stopMinutes > 0 && elapsed >= moving / 2 && elapsed < moving / 2 + stopMinutes;
+                if (!stopped) covered++;
+                var f = progress * covered / moving;
+                var (lat, lng) = Jitter(Road(plant, site, f, seed), stopped ? 6 : 10, rnd);
+                points.Add((m, lat, lng, stopped ? 0 : 38 + rnd.NextDouble() * 22));
+            }
+        }
+
+        switch (status)
+        {
+            case DeliveryStatus.AtPlant:
+                Stay(sinceMin, 0, plant, 35);
+                break;
+            case DeliveryStatus.Loading:
+                Stay(sinceMin + LoadingMinutes, 0, plant, 35);
+                break;
+            case DeliveryStatus.InTransit:
+                Stay(sinceMin + LoadingMinutes, sinceMin, plant, 35);
+                var late = sinceMin > travel;
+                Drive(sinceMin, 0, late ? 0.92 : Math.Min(0.92, (double)sinceMin / travel), late ? 20 : 0);
+                break;
+            case DeliveryStatus.ArrivedAtSite:
+            case DeliveryStatus.Unloading:
+                var atSite = sinceMin + (status == DeliveryStatus.Unloading ? UnloadedMinutes : 0);
+                Stay(atSite + travel + LoadingMinutes, atSite + travel, plant, 35);
+                Drive(atSite + travel, atSite, 1, 0);
+                Stay(atSite, 0, site, 30);
+                break;
+            case DeliveryStatus.Delivered:
+                var leftSite = sinceMin;
+                Stay(leftSite + SiteMinutes + travel + LoadingMinutes, leftSite + SiteMinutes + travel, plant, 35);
+                Drive(leftSite + SiteMinutes + travel, leftSite + SiteMinutes, 1, 0);
+                Stay(leftSite + SiteMinutes, leftSite, site, 30);
+                break;
+        }
+
+        return points.Select(p => new GpsPosition
+        {
+            Id = Guid.NewGuid(), CompanyId = companyId, ClientId = Guid.NewGuid(),
+            TruckPlate = plate, DeliveryId = deliveryId,
+            Latitude = p.Lat, Longitude = p.Lng, AccuracyM = 5 + rnd.NextDouble() * 10,
+            SpeedKmh = Math.Round(p.Speed, 1),
+            RecordedAt = now.AddMinutes(-p.MinutesAgo), ReceivedAt = now.AddMinutes(-p.MinutesAgo),
+        });
+    }
+
+    // A point along a gently curved road from the plant to the site (f = 0..1)
+    private static (double Lat, double Lng) Road((double Lat, double Lng) a, (double Lat, double Lng) b, double f, int seed)
+    {
+        // A curve through a control point pushed sideways from the middle
+        var side = seed % 2 == 0 ? 1 : -1;
+        var (mx, my) = ((a.Lat + b.Lat) / 2, (a.Lng + b.Lng) / 2);
+        var (cx, cy) = (mx - (b.Lng - a.Lng) * 0.18 * side, my + (b.Lat - a.Lat) * 0.18 * side);
+        var u = 1 - f;
+        return (u * u * a.Lat + 2 * u * f * cx + f * f * b.Lat, u * u * a.Lng + 2 * u * f * cy + f * f * b.Lng);
+    }
+
+    // A point moved randomly by up to "metres" (GPS is never exactly still)
+    private static (double Lat, double Lng) Jitter((double Lat, double Lng) p, double metres, Random rnd)
+    {
+        var dLat = (rnd.NextDouble() * 2 - 1) * metres / 111_320;
+        var dLng = (rnd.NextDouble() * 2 - 1) * metres / (111_320 * Math.Cos(p.Lat * Math.PI / 180));
+        return (p.Lat + dLat, p.Lng + dLng);
     }
 }

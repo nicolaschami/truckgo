@@ -282,6 +282,55 @@ public class Weighing
 }
 
 // ----------------------------------------------------------------------------
+// WHAT THE APP RECORDS (sent by the driver app)
+// ----------------------------------------------------------------------------
+
+/// <summary>
+/// One GPS point of a truck, sent by the driver app (POST /api/v1/positions).
+/// The biggest table: points older than the GPS retention setting are
+/// deleted every night. Feeds the Map & trace screen.
+/// </summary>
+public class GpsPosition
+{
+    public Guid Id { get; set; }
+    public Guid CompanyId { get; set; }
+
+    /// <summary>
+    /// Made by the phone for each point. If the app sends the same batch
+    /// twice (weak signal, the answer got lost), the server recognises the
+    /// ids and stores nothing twice. Unique.
+    /// </summary>
+    public Guid ClientId { get; set; }
+
+    /// <summary>The truck the driver is in (a plate, like on the deliveries).</summary>
+    public required string TruckPlate { get; set; }
+
+    /// <summary>The delivery the truck was working on, if any — to draw a delivery's route.</summary>
+    public Guid? DeliveryId { get; set; }
+
+    /// <summary>The driver who sent it (null for demo data).</summary>
+    public Guid? DriverId { get; set; }
+
+    public double Latitude { get; set; }
+    public double Longitude { get; set; }
+
+    /// <summary>GPS accuracy in metres, as reported by the phone.</summary>
+    public double? AccuracyM { get; set; }
+
+    /// <summary>Speed in km/h, as reported by the phone.</summary>
+    public double? SpeedKmh { get; set; }
+
+    /// <summary>Direction of travel, 0-360 degrees (0 = north).</summary>
+    public double? Heading { get; set; }
+
+    /// <summary>When the phone took the point (its own clock, UTC).</summary>
+    public DateTime RecordedAt { get; set; }
+
+    /// <summary>When the server received it — later than RecordedAt when the phone was offline.</summary>
+    public DateTime ReceivedAt { get; set; }
+}
+
+// ----------------------------------------------------------------------------
 // TRUCKGO'S OWN DATA (created and managed in TruckGo)
 // ----------------------------------------------------------------------------
 

@@ -31,3 +31,13 @@ Authorization: Bearer {{token}}
 Content-Type: application/json
 
 { "currentPin": "1234", "newPin": "4821" }
+
+### The app sends GPS points (a batch; sending the same clientId again stores nothing twice)
+POST {{api}}/positions
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+[
+  { "clientId": "6f1c2a1e-0000-4000-8000-000000000001", "truckPlate": "AB-1234", "latitude": 52.5545, "longitude": -1.5260, "recordedAt": "2026-10-11T08:00:00Z", "accuracyM": 8, "speedKmh": 0, "plantCode": "QN2", "deliveryNumber": "422211" },
+  { "clientId": "6f1c2a1e-0000-4000-8000-000000000002", "truckPlate": "AB-1234", "latitude": 52.5560, "longitude": -1.5240, "recordedAt": "2026-10-11T08:01:00Z", "accuracyM": 8, "speedKmh": 34, "plantCode": "QN2", "deliveryNumber": "422211" }
+]

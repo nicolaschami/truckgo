@@ -1,5 +1,6 @@
 @page "/customers/ship-tos/{Id:guid}"
 @using System.Globalization
+@inject NavigationManager Nav
 @inject CustomerQueries Queries
 
 @* SCREEN 1c — One ship-to (docs/back-office-design.md): where it is (map
@@ -97,7 +98,8 @@ else
             <MudSpacer />
             <span class="muted">Last @CustomerQueries.RecentDeliveryCount, newest first</span>
         </div>
-        <MudTable Items="s.RecentDeliveries" Hover="true" Elevation="0" Breakpoint="Breakpoint.Sm" Class="clean-table">
+        <MudTable Items="s.RecentDeliveries" Hover="true" Elevation="0" Breakpoint="Breakpoint.Sm" Class="clean-table clickable-rows"
+                  OnRowClick="@((TableRowClickEventArgs<ShipToDeliveryRow> e) => Nav.NavigateTo($"/deliveries/{e.Item!.DeliveryId}"))">
             <HeaderContent>
                 <MudTh>Delivery</MudTh>
                 <MudTh>Planned</MudTh>

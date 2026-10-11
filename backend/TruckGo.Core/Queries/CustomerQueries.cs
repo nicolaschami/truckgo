@@ -55,6 +55,7 @@ public record CustomerDetail(
 
 /// <summary>A delivery to a ship-to, for its "recent deliveries" list.</summary>
 public record ShipToDeliveryRow(
+    Guid DeliveryId,      // to open the delivery's page
     string PlantCode,
     string Number,
     DateTime ScheduledAt,
@@ -142,7 +143,7 @@ public class CustomerQueries(IDbContextFactory<TruckGoDb> dbFactory)
             .Where(d => d.ShipToId == s.Id)
             .OrderByDescending(d => d.ScheduledAt)
             .Take(RecentDeliveryCount)
-            .Select(d => new ShipToDeliveryRow(d.Plant.ExternalCode, d.Number, d.ScheduledAt,
+            .Select(d => new ShipToDeliveryRow(d.Id, d.Plant.ExternalCode, d.Number, d.ScheduledAt,
                 d.Material, d.OrderedTons, d.TruckPlate, d.Status))
             .ToListAsync();
 

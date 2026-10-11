@@ -24,6 +24,7 @@ public enum Attention
 
 /// <summary>One truck at work, as a card on the board.</summary>
 public record BoardCard(
+    Guid DeliveryId,      // to open the delivery's page
     string? TruckPlate,
     string? TrailerPlate,
     Guid? TruckId,          // to open the vehicle page
@@ -110,7 +111,7 @@ public class LiveBoardQueries(IDbContextFactory<TruckGoDb> dbFactory)
             .Where(d => VehicleStates.Underway.Contains(d.Status))
             .Select(d => new
             {
-                d.TruckPlate, d.TrailerPlate, PlantCode = d.Plant.ExternalCode, d.Number,
+                d.Id, d.TruckPlate, d.TrailerPlate, PlantCode = d.Plant.ExternalCode, d.Number,
                 CustomerName = d.Customer.Name, ShipToName = d.ShipTo.Name, d.Material, d.OrderedTons,
                 d.Status, d.UpdatedAt, d.WindowStart, d.WindowEnd,
             })
@@ -127,7 +128,7 @@ public class LiveBoardQueries(IDbContextFactory<TruckGoDb> dbFactory)
                     _ => null,
                 };
                 var (attention, reason) = Judge(column, minutes, limit, d.WindowEnd, now, settings.WindowToleranceMinutes);
-                return new BoardCard(d.TruckPlate, d.TrailerPlate,
+                return new BoardCard(d.Id, d.TruckPlate, d.TrailerPlate,
                     d.TruckPlate is { } p && truckIds.TryGetValue(p, out var id) ? id : null,
                     d.PlantCode, d.Number, d.CustomerName, d.ShipToName, d.Material, d.OrderedTons,
                     d.Status, column, d.UpdatedAt, minutes, limit, d.WindowStart, d.WindowEnd, attention, reason);

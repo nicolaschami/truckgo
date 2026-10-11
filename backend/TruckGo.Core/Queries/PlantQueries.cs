@@ -30,6 +30,7 @@ public record PlantRow(
 /// arrival time until the app's status events are stored (backend phase 2).
 /// </summary>
 public record AtPlantRow(
+    Guid DeliveryId,      // to open the delivery's page
     string? TruckPlate,
     string? TrailerPlate,
     string Number,
@@ -41,6 +42,7 @@ public record AtPlantRow(
 
 /// <summary>A delivery planned from the plant today.</summary>
 public record PlantDeliveryRow(
+    Guid DeliveryId,      // to open the delivery's page
     string Number,
     DateTime ScheduledAt,
     string CustomerName,
@@ -107,14 +109,14 @@ public class PlantQueries(IDbContextFactory<TruckGoDb> dbFactory)
         var atPlant = await db.Deliveries
             .Where(d => d.PlantId == p.Id && AtPlant.Contains(d.Status))
             .OrderBy(d => d.UpdatedAt)
-            .Select(d => new AtPlantRow(d.TruckPlate, d.TrailerPlate, d.Number, d.Customer.Name, d.ShipTo.Name,
+            .Select(d => new AtPlantRow(d.Id, d.TruckPlate, d.TrailerPlate, d.Number, d.Customer.Name, d.ShipTo.Name,
                 d.Material, d.Status, d.UpdatedAt))
             .ToListAsync();
 
         var today = await db.Deliveries
             .Where(d => d.PlantId == p.Id && d.ScheduledAt >= todayFromUtc && d.ScheduledAt < todayToUtc)
             .OrderBy(d => d.ScheduledAt)
-            .Select(d => new PlantDeliveryRow(d.Number, d.ScheduledAt, d.Customer.Name, d.ShipTo.Name,
+            .Select(d => new PlantDeliveryRow(d.Id, d.Number, d.ScheduledAt, d.Customer.Name, d.ShipTo.Name,
                 d.Material, d.OrderedTons, d.TruckPlate, d.Status))
             .ToListAsync();
 
