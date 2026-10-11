@@ -34,6 +34,8 @@ public class MasterDataImport(TruckGoDb db, TimeProvider clock)
         row.Country = m.Country;
         row.Phone = m.Phone;
         row.TaxId = m.TaxId;
+        row.SalesRep = m.SalesRep;
+
         Stamp(row, m.IsActive, m.Extra);
 
         await db.SaveChangesAsync();
@@ -148,8 +150,13 @@ public class MasterDataImport(TruckGoDb db, TimeProvider clock)
         var row = await db.Deliveries.FirstOrDefaultAsync(x => x.PlantId == plant.Id && x.Number == m.Number)
             ?? Add(db.Deliveries, new Delivery
             {
-                Id = Guid.NewGuid(), CompanyId = companyId, PlantId = plant.Id, Number = m.Number,
-                OrderNumber = m.OrderNumber, Material = m.Material, Status = DeliveryStatus.Assigned,
+                Id = Guid.NewGuid(),
+                CompanyId = companyId,
+                PlantId = plant.Id,
+                Number = m.Number,
+                OrderNumber = m.OrderNumber,
+                Material = m.Material,
+                Status = DeliveryStatus.Assigned,
             });
 
         row.OrderNumber = m.OrderNumber;
@@ -189,8 +196,13 @@ public class MasterDataImport(TruckGoDb db, TimeProvider clock)
 
         var row = Add(db.Weighings, new Weighing
         {
-            Id = Guid.NewGuid(), DeliveryId = delivery.Id, Kind = m.Kind, Tons = m.Tons,
-            WeighedAt = m.WeighedAt, TicketNumber = m.TicketNumber, Weighbridge = m.Weighbridge,
+            Id = Guid.NewGuid(),
+            DeliveryId = delivery.Id,
+            Kind = m.Kind,
+            Tons = m.Tons,
+            WeighedAt = m.WeighedAt,
+            TicketNumber = m.TicketNumber,
+            Weighbridge = m.Weighbridge,
         });
         delivery.UpdatedAt = Now;
 

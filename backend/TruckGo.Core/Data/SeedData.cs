@@ -67,7 +67,10 @@ public static class SeedData
             {
                 Id = Guid.NewGuid(),
                 CompanyId = role == UserRole.SuperAdmin ? null : company.Id, // a super admin has no company
-                Email = email, PasswordHash = "", DisplayName = name, Role = role,
+                Email = email,
+                PasswordHash = "",
+                DisplayName = name,
+                Role = role,
             };
             user.PasswordHash = passwordHasher.HashPassword(user, BackOfficePassword);
             db.Users.Add(user);
@@ -120,7 +123,7 @@ public static class SeedData
 
         // Customers and their ship-tos
         await import.SaveCustomerAsync(c, new CustomerMessage("100245", "Northgate Construction Ltd",
-            Address: "1 Northgate House", City: "Coventry", Postcode: "CV1 1AA", Country: "GB", Phone: "+44 24 7600 2450", TaxId: "GB100245000"));
+            Address: "1 Northgate House", City: "Coventry", Postcode: "CV1 1AA", Country: "GB", Phone: "+44 24 7600 2450", TaxId: "GB100245000", SalesRep: "Laura Bennett"));
         await import.SaveShipToAsync(c, new ShipToMessage("100245-01", "100245", "Riverside Arena Works", 52.4486, -1.4955,
             Address: "Arena Way", City: "Coventry", Postcode: "CV6 6AA", Country: "GB",
             ContactName: "Dan Whitfield", ContactPhone: "+44 7700 900123",
@@ -131,13 +134,13 @@ public static class SeedData
             ContactName: "Sara Mills", ContactPhone: "+44 7700 900124", OpeningHours: "Mon-Sat 07:30-16:00"));
 
         await import.SaveCustomerAsync(c, new CustomerMessage("100318", "Harlow & Sons Civil Engineering",
-            Address: "Harlow Yard, Myton Road", City: "Warwick", Postcode: "CV34 6AA", Country: "GB", Phone: "+44 1926 318318"));
+            Address: "Harlow Yard, Myton Road", City: "Warwick", Postcode: "CV34 6AA", Country: "GB", Phone: "+44 1926 318318", SalesRep: "Laura Bennett"));
         await import.SaveShipToAsync(c, new ShipToMessage("100318-01", "100318", "Ring Road Resurfacing", 52.282, -1.5849,
             Address: "Ring Road", City: "Warwick", Postcode: "CV34 4AA", Country: "GB",
             ContactName: "Priya Nair", ContactPhone: "+44 7700 900456", OpeningHours: "Night works 20:00-06:00"));
 
         await import.SaveCustomerAsync(c, new CustomerMessage("100577", "Metro Paving Services",
-            Address: "7 Dunchurch Road", City: "Rugby", Postcode: "CV22 6AA", Country: "GB", Phone: "+44 1788 577577"));
+            Address: "7 Dunchurch Road", City: "Rugby", Postcode: "CV22 6AA", Country: "GB", Phone: "+44 1788 577577", SalesRep: "Laura Bennett"));
         await import.SaveShipToAsync(c, new ShipToMessage("100577-01", "100577", "Station Car Park", 52.3785, -1.2503,
             Address: "Station Road", City: "Rugby", Postcode: "CV21 3AA", Country: "GB",
             ContactName: "Tom Hale", ContactPhone: "+44 7700 900789",
@@ -145,7 +148,7 @@ public static class SeedData
 
         // An inactive customer, to show the "active only" filter of the screens
         await import.SaveCustomerAsync(c, new CustomerMessage("100999", "Old Mill Builders (closed)",
-            City: "Leamington Spa", Country: "GB", IsActive: false));
+            City: "Leamington Spa", Country: "GB", IsActive: false, SalesRep: "Laura Bennett"));
         await import.SaveShipToAsync(c, new ShipToMessage("100999-01", "100999", "Old Mill Site", 52.2852, -1.5363,
             City: "Leamington Spa", Country: "GB", IsActive: false));
 

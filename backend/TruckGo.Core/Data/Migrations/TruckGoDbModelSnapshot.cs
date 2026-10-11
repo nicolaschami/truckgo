@@ -165,6 +165,9 @@ namespace TruckGo.Data.Migrations
                     b.Property<string>("Postcode")
                         .HasColumnType("text");
 
+                    b.Property<string>("SalesRep")
+                        .HasColumnType("text");
+
                     b.Property<string>("TaxId")
                         .HasColumnType("text");
 

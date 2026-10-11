@@ -17,6 +17,7 @@ public record CustomerRow(
     string Name,
     string? City,
     string? Country,
+    string? Salesrep,
     int ShipToCount,
     bool IsActive,
     DateTime LastReceivedAt);
@@ -45,6 +46,7 @@ public record CustomerDetail(
     string? Country,
     string? Phone,
     string? TaxId,
+    string? salesrep,
     bool IsActive,
     DateTime LastReceivedAt,
     IReadOnlyDictionary<string, string> Extra,
@@ -102,7 +104,7 @@ public class CustomerQueries(IDbContextFactory<TruckGoDb> dbFactory)
         return await db.Customers
             .Where(c => c.CompanyId == companyId)
             .OrderBy(c => c.Name)
-            .Select(c => new CustomerRow(c.Id, c.ExternalCode, c.Name, c.City, c.Country,
+            .Select(c => new CustomerRow(c.Id, c.ExternalCode, c.Name, c.City, c.Country, c.SalesRep,
                 c.ShipTos.Count, c.IsActive, c.LastReceivedAt))
             .ToListAsync();
     }
@@ -123,7 +125,7 @@ public class CustomerQueries(IDbContextFactory<TruckGoDb> dbFactory)
             .ToList();
 
         return new CustomerDetail(c.Id, c.ExternalCode, c.Name, c.Address, c.City, c.Postcode,
-            c.Country, c.Phone, c.TaxId, c.IsActive, c.LastReceivedAt, c.Extra, shipTos,
+            c.Country, c.Phone, c.TaxId, c.SalesRep, c.IsActive, c.LastReceivedAt, c.Extra, shipTos,
             await RadiusAsync(db, companyId));
     }
 

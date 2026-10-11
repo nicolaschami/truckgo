@@ -82,6 +82,9 @@ public class Customer : MasterData
 
     /// <summary>VAT / tax identification number.</summary>
     public string? TaxId { get; set; }
+    /// <summary>The sales representative in charge of this customer.</summary>
+    public string? SalesRep { get; set; }
+
 
     public List<ShipTo> ShipTos { get; set; } = [];
 }

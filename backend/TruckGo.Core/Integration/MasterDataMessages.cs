@@ -26,6 +26,8 @@ public record CustomerMessage(
     string? Country = null,
     string? Phone = null,
     string? TaxId = null,
+    string? SalesRep = null,
+
     bool IsActive = true,
     Dictionary<string, string>? Extra = null);
 

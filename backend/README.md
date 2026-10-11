@@ -54,6 +54,40 @@ dotnet ef database drop --force --project TruckGo.Core --startup-project TruckGo
 dotnet run --project TruckGo.Api     # migrates and seeds again
 ```
 
+## Adding a field (a new column)
+
+**Golden rule: never add or change a column by hand (pgAdmin, SQL).** Change
+the C# code, then let a **migration** change the database — otherwise EF Core's
+record of the tables is wrong and the next migration fails.
+
+Example: `SalesRep` on customers.
+
+1. **Entity** — `TruckGo.Core/Data/Entities.cs`: the property, in PascalCase,
+   with a comment:
+   ```csharp
+   /// <summary>The sales representative in charge of this customer.</summary>
+   public string? SalesRep { get; set; }
+   ```
+   `string?` = may be empty. Leave "no value" as empty (null), not "N/A".
+2. **The door** (only if the value comes from the other system):
+   `CustomerMessage` in `TruckGo.Core/Integration/MasterDataMessages.cs` gets
+   `string? SalesRep = null`, and `SaveCustomerAsync` in `MasterDataImport.cs`
+   gets `row.SalesRep = m.SalesRep;`.
+3. **Demo data** — `TruckGo.Core/Data/SeedData.cs`: give some records a value.
+4. **Migration** — from `backend`, with the API and back office **stopped**:
+   ```
+   dotnet ef migrations add AddCustomerSalesRep --project TruckGo.Core --startup-project TruckGo.Api --output-dir Data/Migrations --namespace TruckGo.Data.Migrations
+   ```
+   Open the new file in `TruckGo.Core/Data/Migrations` and check it only says
+   `AddColumn` for your field. The column is created when the API or the back
+   office next starts (development) — they apply new migrations themselves.
+5. **The package** — `TruckGo.Core/Queries/...Queries.cs`: add the field to
+   the record the screen uses (e.g. `CustomerDetail`) and fill it where the
+   record is built.
+6. **The screen** — the page (e.g. `CustomerPage.razor`): show it, e.g. a line
+   `("Sales rep", c.SalesRep)` in the details list.
+7. **Check** — `dotnet build`, `dotnet test`, then open the page.
+
 ## Database password
 
 Never in `appsettings*.json`. Stored once with user secrets, shared by the API

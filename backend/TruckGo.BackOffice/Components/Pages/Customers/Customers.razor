@@ -8,20 +8,25 @@
 
 <PageTitle>Customers · TruckGo</PageTitle>
 
-<PageHeader Title="Customers" Subtitle="Your customers and their delivery places (ship-tos), as received from your system." />
+<PageHeader Title="Customers"
+            Subtitle="Your customers and their delivery places (ship-tos), as received from your system." />
 
 <div class="stat-row">
-    <StatTile Icon="@Icons.Material.Rounded.Storefront" Label="Customers" Value="@(_rows?.Count ?? 0)" Color="#2563EB" />
-    <StatTile Icon="@Icons.Material.Rounded.CheckCircle" Label="Active" Value="@(_rows?.Count(c => c.IsActive) ?? 0)" Color="#16A34A" />
-    <StatTile Icon="@Icons.Material.Rounded.Place" Label="Ship-tos" Value="@(_rows?.Sum(c => c.ShipToCount) ?? 0)" Color="#F59E0B" />
-    <StatTile Icon="@Icons.Material.Rounded.Block" Label="Inactive" Value="@(_rows?.Count(c => !c.IsActive) ?? 0)" Color="#64748B" />
+    <StatTile Icon="@Icons.Material.Rounded.Storefront" Label="Customers" Value="@(_rows?.Count ?? 0)"
+              Color="#2563EB" />
+    <StatTile Icon="@Icons.Material.Rounded.CheckCircle" Label="Active" Value="@(_rows?.Count(c => c.IsActive) ?? 0)"
+              Color="#16A34A" />
+    <StatTile Icon="@Icons.Material.Rounded.Place" Label="Ship-tos" Value="@(_rows?.Sum(c => c.ShipToCount) ?? 0)"
+              Color="#F59E0B" />
+    <StatTile Icon="@Icons.Material.Rounded.Block" Label="Inactive" Value="@(_rows?.Count(c => !c.IsActive) ?? 0)"
+              Color="#64748B" />
 </div>
 
 <MudPaper Class="card" Elevation="0">
     <div class="card-toolbar">
         <MudTextField @bind-Value="_search" Placeholder="Search code, name or city" Immediate="true" Clearable="true"
-                      Variant="Variant.Outlined" Margin="Margin.Dense"
-                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Rounded.Search" Class="search-box" />
+                      Variant="Variant.Outlined" Margin="Margin.Dense" Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Rounded.Search" Class="search-box" />
         <MudSpacer />
         <MudSwitch @bind-Value="_activeOnly" Color="Color.Primary" Label="Active only" />
     </div>
@@ -31,8 +36,10 @@
         <HeaderContent>
             <MudTh>Customer</MudTh>
             <MudTh>City</MudTh>
+            <MudTh>SalesRep</MudTh>
             <MudTh Style="text-align:center">Ship-tos</MudTh>
             <MudTh>Last received</MudTh>
+            
             <MudTh>Status</MudTh>
             <MudTh></MudTh>
         </HeaderContent>
@@ -44,6 +51,9 @@
                 </div>
             </MudTd>
             <MudTd DataLabel="City">@Show.Line(context.City, context.Country)</MudTd>
+            <MudTd DataLabel="SalesRep">
+                <span class="person-name">@context.Salesrep</span>
+            </MudTd>
             <MudTd DataLabel="Ship-tos" Style="text-align:center">
                 <span class="count-pill">@context.ShipToCount</span>
             </MudTd>
@@ -53,8 +63,15 @@
                 </MudTooltip>
             </MudTd>
             <MudTd DataLabel="Status">
-                @if (context.IsActive) { <span class="badge badge-green">Active</span> }
-                else { <span class="badge badge-gray">Inactive</span> }
+                @if (context.IsActive)
+                {
+                    <span class="badge badge-green">Active</span>
+                }
+                else
+                {
+
+                    <span class="badge badge-gray">Inactive</span>
+                }
             </MudTd>
             <MudTd Style="text-align:right">
                 <MudIcon Icon="@Icons.Material.Rounded.ChevronRight" Class="row-arrow" />
