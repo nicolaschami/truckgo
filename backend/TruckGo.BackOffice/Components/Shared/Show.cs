@@ -47,6 +47,27 @@ public static class Show
     public static string DateTime(DateTime? utc) =>
         utc is { } t ? t.ToLocalTime().ToString("dd/MM/yyyy HH:mm") : "never";
 
+    /// <summary>"09:30" — a time of day, in the server's time zone (see above).</summary>
+    public static string Time(DateTime utc) => utc.ToLocalTime().ToString("HH:mm");
+
+    /// <summary>
+    /// Today, as the UTC time range the queries need: from local midnight to
+    /// the next local midnight (in the server's time zone for now).
+    /// </summary>
+    public static (DateTime FromUtc, DateTime ToUtc) Today()
+    {
+        var localMidnight = System.DateTime.Now.Date;
+        return (localMidnight.ToUniversalTime(), localMidnight.AddDays(1).ToUniversalTime());
+    }
+
+    /// <summary>How long since a moment, as a waiting time: "4 min", "1 h 05".</summary>
+    public static string Duration(DateTime sinceUtc)
+    {
+        var d = System.DateTime.UtcNow - sinceUtc;
+        if (d < TimeSpan.Zero) d = TimeSpan.Zero;
+        return d.TotalMinutes < 60 ? $"{(int)d.TotalMinutes} min" : $"{(int)d.TotalHours} h {d.Minutes:00}";
+    }
+
     /// <summary>"just now", "12 min ago", "3 h ago", "yesterday", "5 days ago", then the date.</summary>
     public static string Ago(DateTime? utc)
     {

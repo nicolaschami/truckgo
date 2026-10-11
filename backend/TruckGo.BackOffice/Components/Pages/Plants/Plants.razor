@@ -1,0 +1,118 @@
+@page "/plants"
+@inject PlantQueries Queries
+@inject NavigationManager Nav
+
+@* SCREEN 2a — Plant list (docs/back-office-design.md).
+   The plants the trucks load at, as received from the client's system, with
+   what is happening at each one right now: trucks at the plant and today's
+   deliveries. A map shows them all; a click opens the plant. *@
+
+<PageTitle>Plants · TruckGo</PageTitle>
+
+<PageHeader Title="Plants" Subtitle="Where your trucks load — and what is happening there right now." />
+
+<div class="stat-row">
+    <StatTile Icon="@Icons.Material.Rounded.Factory" Label="Plants" Value="@(_rows?.Count ?? 0)" Color="#2563EB" />
+    <StatTile Icon="@Icons.Material.Rounded.LocalShipping" Label="Trucks at a plant now" Value="@(_rows?.Sum(p => p.TrucksAtPlant) ?? 0)" Color="#F59E0B" />
+    <StatTile Icon="@Icons.Material.Rounded.ReceiptLong" Label="Deliveries today" Value="@(_rows?.Sum(p => p.DeliveriesToday) ?? 0)" Color="#16A34A" />
+    <StatTile Icon="@Icons.Material.Rounded.Block" Label="Inactive" Value="@(_rows?.Count(p => !p.IsActive) ?? 0)" Color="#64748B" />
+</div>
+
+@* ---- All plants on a map; a click on a dot opens the plant ---- *@
+<MudPaper Class="card mb-5" Elevation="0">
+    <div class="card-title pad-x"><MudIcon Icon="@Icons.Material.Rounded.Map" /> Plants on the map
+        <span class="muted card-title-note">circles = geofence (@_radius.ToString("0") m) · entering one = “At plant”</span>
+    </div>
+    @if (_rows is not null)
+    {
+        <MapView Places="_places" RadiusM="_radius" Height="300" />
+    }
+</MudPaper>
+
+<MudPaper Class="card" Elevation="0">
+    <div class="card-toolbar">
+        <MudTextField @bind-Value="_search" Placeholder="Search code, name or city" Immediate="true" Clearable="true"
+                      Variant="Variant.Outlined" Margin="Margin.Dense"
+                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Rounded.Search" Class="search-box" />
+        <MudSpacer />
+        <MudSwitch @bind-Value="_activeOnly" Color="Color.Primary" Label="Active only" />
+    </div>
+
+    <MudTable Items="Visible" Hover="true" Elevation="0" Loading="@(_rows is null)" Breakpoint="Breakpoint.Sm"
+              Class="clean-table clickable-rows" OnRowClick="@((TableRowClickEventArgs<PlantRow> e) => Open(e.Item!))">
+        <HeaderContent>
+            <MudTh>Plant</MudTh>
+            <MudTh>City</MudTh>
+            <MudTh Style="text-align:center">Trucks at the plant now</MudTh>
+            <MudTh Style="text-align:center">Deliveries today</MudTh>
+            <MudTh>Status</MudTh>
+            <MudTh></MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Plant">
+                <div class="person">
+                    <span class="code-chip">@context.Code</span>
+                    <span class="person-name">@context.Name</span>
+                </div>
+            </MudTd>
+            <MudTd DataLabel="City">@Show.Line(context.City, context.Country)</MudTd>
+            <MudTd DataLabel="Trucks at the plant now" Style="text-align:center">
+                @* Amber when trucks are there, grey when nobody is *@
+                <span class="count-pill @(context.TrucksAtPlant == 0 ? "count-zero" : "")">@context.TrucksAtPlant</span>
+            </MudTd>
+            <MudTd DataLabel="Deliveries today" Style="text-align:center">
+                <span class="count-pill count-blue @(context.DeliveriesToday == 0 ? "count-zero" : "")">@context.DeliveriesToday</span>
+            </MudTd>
+            <MudTd DataLabel="Status">
+                @if (context.IsActive) { <span class="badge badge-green">Active</span> }
+                else { <span class="badge badge-gray">Inactive</span> }
+            </MudTd>
+            <MudTd Style="text-align:right"><MudIcon Icon="@Icons.Material.Rounded.ChevronRight" Class="row-arrow" /></MudTd>
+        </RowTemplate>
+        <NoRecordsContent>
+            <div class="empty-table">
+                <MudIcon Icon="@Icons.Material.Rounded.SearchOff" Size="Size.Large" />
+                <div>No plant matches.</div>
+            </div>
+        </NoRecordsContent>
+    </MudTable>
+</MudPaper>
+
+<ReceivedNote />
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState> AuthState { get; set; } = default!;
+
+    private List<PlantRow>? _rows;
+    private IReadOnlyList<MapView.Place> _places = [];
+    private double _radius = 200;
+    private string _search = "";
+    private bool _activeOnly = true;
+
+    [Inject] private SettingsAdmin Settings { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // A SuperAdmin has no company and so no plants to show
+        if ((await AuthState).User.CompanyId() is not { } company) { _rows = []; return; }
+
+        var (from, to) = Show.Today();
+        _rows = await Queries.ListAsync(company, from, to);
+        _radius = (await Settings.GetAsync(company)).GeofenceRadiusM;
+
+        // Each plant on the map (blue); a click opens its page
+        _places = _rows
+            .Select(p => new MapView.Place(p.Latitude, p.Longitude, $"{p.Code} · {p.Name}", "plant", p.IsActive, $"/plants/{p.Id}"))
+            .ToList();
+    }
+
+    // The rows after the search box and the "active only" switch
+    private IEnumerable<PlantRow> Visible => (_rows ?? [])
+        .Where(p => !_activeOnly || p.IsActive)
+        .Where(p => string.IsNullOrWhiteSpace(_search)
+            || p.Code.Contains(_search, StringComparison.OrdinalIgnoreCase)
+            || p.Name.Contains(_search, StringComparison.OrdinalIgnoreCase)
+            || (p.City ?? "").Contains(_search, StringComparison.OrdinalIgnoreCase));
+
+    private void Open(PlantRow row) => Nav.NavigateTo($"/plants/{row.Id}");
+}

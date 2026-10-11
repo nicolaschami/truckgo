@@ -774,3 +774,83 @@ h1:focus-visible {
 .back-button .mud-button-icon-start {
     transition: transform .15s;
 }
+
+/* --------------------------------------------------------------------------
+   Plants: counters and "at the plant now"
+   -------------------------------------------------------------------------- */
+
+.count-pill.count-blue {
+    background: #DBEAFE;
+    color: #1E40AF;
+}
+
+/* Nothing there: a quiet grey zero */
+.count-pill.count-zero {
+    background: #F1F5F9;
+    color: #94A3B8;
+}
+
+.at-plant-list {
+    display: flex;
+    flex-direction: column;
+}
+
+/* One truck at the plant: truck | delivery | status + waiting time */
+.at-plant {
+    display: grid;
+    grid-template-columns: minmax(160px, 1fr) minmax(0, 2fr) auto;
+    gap: 16px;
+    align-items: center;
+    padding: 14px 20px;
+    border-top: 1px solid var(--tg-line);
+    box-shadow: inset 4px 0 0 #2563EB;
+}
+
+.at-plant:first-child {
+    border-top: 0;
+}
+
+/* Waiting too long (Settings limit): amber bar and background */
+.at-plant-late {
+    background: #FFFBEB;
+    box-shadow: inset 4px 0 0 var(--tg-amber);
+}
+
+.at-plant-truck {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.at-plant-truck .mud-icon-root {
+    color: var(--tg-blue);
+}
+
+.at-plant-status {
+    text-align: right;
+}
+
+.wait {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 6px;
+    font-weight: 700;
+    font-size: .95rem;
+    color: #334155;
+}
+
+.wait-late {
+    color: #B45309;
+}
+
+@media (max-width: 700px) {
+    .at-plant {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+
+    .at-plant-status {
+        text-align: left;
+    }
+}

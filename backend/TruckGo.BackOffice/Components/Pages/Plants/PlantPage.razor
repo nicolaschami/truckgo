@@ -1,0 +1,171 @@
+@page "/plants/{Id:guid}"
+@using System.Globalization
+@inject PlantQueries Queries
+
+@* SCREEN 2b — One plant (docs/back-office-design.md): its details and map,
+   the trucks at the plant right now with how long they have been waiting,
+   and today's deliveries from it. View only. *@
+
+<PageTitle>@(_plant?.Name ?? "Plant") · TruckGo</PageTitle>
+
+<BackButton Href="/plants" Text="Plants" />
+
+@if (_notFound)
+{
+    <MudAlert Severity="Severity.Warning">This plant does not exist.</MudAlert>
+}
+else if (_plant is not { } p)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else
+{
+    <div class="page-header">
+        <div>
+            <div class="title-row">
+                <MudText Typo="Typo.h5" HtmlTag="h1">@p.Name</MudText>
+                <span class="code-chip">@p.Code</span>
+                @if (p.IsActive) { <span class="badge badge-green">Active</span> }
+                else { <span class="badge badge-gray">Inactive</span> }
+            </div>
+            <MudText Typo="Typo.body2" Class="mt-1 muted">
+                @Show.Line(p.Address, p.City) · @p.AtPlantNow.Count truck@(p.AtPlantNow.Count == 1 ? "" : "s") here now · @p.Today.Count deliver@(p.Today.Count == 1 ? "y" : "ies") today
+            </MudText>
+        </div>
+        <div class="page-actions">
+            <MudButton Href="@GoogleMapsUrl(p)" Target="_blank" Variant="Variant.Outlined" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Rounded.Directions">Open in Google Maps</MudButton>
+        </div>
+    </div>
+
+    @* ---- At the plant now: the most important part of this screen ---- *@
+    <MudPaper Class="card mb-5" Elevation="0">
+        <div class="card-toolbar">
+            <div class="card-title"><MudIcon Icon="@Icons.Material.Rounded.LocalShipping" /> At the plant now</div>
+            <MudSpacer />
+            <span class="muted">Waiting longer than @p.LongWaitMinutes min is shown in orange (Settings)</span>
+        </div>
+        @if (p.AtPlantNow.Count == 0)
+        {
+            <div class="empty-table">
+                <MudIcon Icon="@Icons.Material.Rounded.DoneAll" Size="Size.Large" />
+                <div>No truck at this plant right now.</div>
+            </div>
+        }
+        else
+        {
+            <div class="at-plant-list">
+                @foreach (var t in p.AtPlantNow)
+                {
+                    var tooLong = (DateTime.UtcNow - t.Since).TotalMinutes > p.LongWaitMinutes;
+                    <div class="at-plant @(tooLong ? "at-plant-late" : "")">
+                        <div class="at-plant-truck">
+                            <MudIcon Icon="@Icons.Material.Rounded.LocalShipping" />
+                            <div>
+                                <div class="person-name">@(t.TruckPlate ?? "No truck")</div>
+                                <div class="muted">@(t.TrailerPlate is { } tr ? $"Trailer {tr}" : "No trailer")</div>
+                            </div>
+                        </div>
+                        <div class="at-plant-delivery">
+                            <span class="code-chip">@p.Code / @t.Number</span>
+                            <div class="muted">@t.CustomerName → @t.ShipToName</div>
+                            <div class="muted">@t.Material</div>
+                        </div>
+                        <div class="at-plant-status">
+                            <span class="badge @Show.StatusBadge(t.Status)">@Show.Status(t.Status)</span>
+                            <div class="wait @(tooLong ? "wait-late" : "")">
+                                <MudIcon Icon="@Icons.Material.Rounded.Timer" Size="Size.Small" />
+                                @Show.Duration(t.Since)
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </MudPaper>
+
+    <div class="detail-grid">
+        @* ---- Details ---- *@
+        <MudPaper Class="card pad" Elevation="0">
+            <div class="card-title"><MudIcon Icon="@Icons.Material.Rounded.Factory" /> Plant details</div>
+            <InfoList Items="@([
+                ("Address", Show.Line(p.Address, p.Postcode, p.City)),
+                ("Country", p.Country),
+                ("Phone", p.Phone),
+                ("Coordinates", $"{p.Latitude.ToString("0.00000", CultureInfo.InvariantCulture)}, {p.Longitude.ToString("0.00000", CultureInfo.InvariantCulture)}"),
+                ("Last received", Show.DateTime(p.LastReceivedAt)),
+            ])" />
+            <ExtraInfo Values="p.Extra" />
+        </MudPaper>
+
+        @* ---- Map ---- *@
+        <MudPaper Class="card" Elevation="0">
+            <div class="card-title pad-x"><MudIcon Icon="@Icons.Material.Rounded.Map" /> Location
+                <span class="muted card-title-note">circle = geofence (@p.GeofenceRadiusM.ToString("0") m)</span>
+            </div>
+            <MapView Places="_places" RadiusM="p.GeofenceRadiusM" Height="300" />
+        </MudPaper>
+    </div>
+
+    @* ---- Today's deliveries from this plant ---- *@
+    <MudPaper Class="card mt-5" Elevation="0">
+        <div class="card-toolbar">
+            <div class="card-title"><MudIcon Icon="@Icons.Material.Rounded.ReceiptLong" /> Today's deliveries</div>
+            <MudSpacer />
+            <span class="muted">By planned time</span>
+        </div>
+        <MudTable Items="p.Today" Hover="true" Elevation="0" Breakpoint="Breakpoint.Sm" Class="clean-table">
+            <HeaderContent>
+                <MudTh>Planned</MudTh>
+                <MudTh>Delivery</MudTh>
+                <MudTh>Customer → ship-to</MudTh>
+                <MudTh>Material</MudTh>
+                <MudTh Style="text-align:right">Ordered</MudTh>
+                <MudTh>Truck</MudTh>
+                <MudTh>Status</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Planned"><strong>@Show.Time(context.ScheduledAt)</strong></MudTd>
+                <MudTd DataLabel="Delivery"><span class="code-chip">@p.Code / @context.Number</span></MudTd>
+                <MudTd DataLabel="Customer → ship-to">
+                    <div>@context.CustomerName</div>
+                    <div class="muted">@context.ShipToName</div>
+                </MudTd>
+                <MudTd DataLabel="Material">@context.Material</MudTd>
+                <MudTd DataLabel="Ordered" Style="text-align:right">@Show.Tonnes(context.OrderedTons)</MudTd>
+                <MudTd DataLabel="Truck">@(context.TruckPlate ?? "—")</MudTd>
+                <MudTd DataLabel="Status"><span class="badge @Show.StatusBadge(context.Status)">@Show.Status(context.Status)</span></MudTd>
+            </RowTemplate>
+            <NoRecordsContent>
+                <div class="empty-table">No delivery planned from this plant today.</div>
+            </NoRecordsContent>
+        </MudTable>
+    </MudPaper>
+
+    <ReceivedNote LastReceivedAt="p.LastReceivedAt" />
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+    [CascadingParameter] private Task<AuthenticationState> AuthState { get; set; } = default!;
+
+    private PlantDetail? _plant;
+    private bool _notFound;
+    private IReadOnlyList<MapView.Place> _places = [];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var company = (await AuthState).User.CompanyId();
+        var (from, to) = Show.Today();
+        _plant = company is { } id ? await Queries.GetAsync(id, Id, from, to) : null;
+        _notFound = _plant is null;
+        if (_plant is not { } p) return;
+
+        _places = [new MapView.Place(p.Latitude, p.Longitude, p.Name, "plant", p.IsActive)];
+    }
+
+    // Google Maps at the plant's exact point
+    private static string GoogleMapsUrl(PlantDetail p) =>
+        "https://www.google.com/maps/search/?api=1&query=" +
+        p.Latitude.ToString(CultureInfo.InvariantCulture) + "," + p.Longitude.ToString(CultureInfo.InvariantCulture);
+}
