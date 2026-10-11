@@ -24,3 +24,10 @@ Authorization: Bearer {{token}}
 ### One delivery, with its 1st and 2nd weight
 GET {{api}}/deliveries/QN2/421987
 Authorization: Bearer {{token}}
+
+### The driver chooses a new PIN (asked by the app when login says "mustChangePin": true)
+POST {{api}}/auth/change-pin
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "currentPin": "1234", "newPin": "4821" }

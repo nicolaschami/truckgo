@@ -25,6 +25,7 @@ builder.Services.AddDbContextFactory<TruckGoDb>(o =>
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<UserAdmin>();
 builder.Services.AddScoped<SettingsAdmin>();
+builder.Services.AddScoped<DriverAdmin>();
 
 // What the screens show (TruckGo.Core/Queries), read only
 builder.Services.AddScoped<CustomerQueries>();

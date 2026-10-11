@@ -1,0 +1,53 @@
+@* The "New driver" / "Edit driver" dialog. It only collects the values; the
+   Drivers page does the saving and shows any error. *@
+
+<MudDialog>
+    <DialogContent>
+        <MudForm @ref="_form">
+            <MudTextField @bind-Value="Form.Username" Label="Username (used to log in to the app)" Required="true"
+                          RequiredError="Please enter a username." Variant="Variant.Outlined"
+                          Disabled="@(!IsNew)"
+                          HelperText="@(IsNew ? "3 to 30 letters or digits, no spaces — e.g. jperez" : "The username never changes.")" />
+            <MudTextField @bind-Value="Form.DisplayName" Label="Name" Required="true" Variant="Variant.Outlined"
+                          RequiredError="Please enter the driver's name." Class="mt-3" />
+            <MudTextField @bind-Value="Form.Phone" Label="Phone (optional)" Variant="Variant.Outlined" Class="mt-3"
+                          InputType="InputType.Telephone" Placeholder="+34 600 000 000" />
+            @if (IsNew)
+            {
+                <MudText Typo="Typo.body2" Class="mt-4 muted">
+                    TruckGo creates a 4-digit PIN and shows it once. The driver chooses their own PIN at the first login in the app.
+                </MudText>
+            }
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => MudDialog.Cancel()">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SubmitAsync">
+            @(IsNew ? "Create driver" : "Save")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    /// <summary>Values to start with (empty for a new driver).</summary>
+    [Parameter] public DriverForm Form { get; set; } = new();
+    [Parameter] public bool IsNew { get; set; }
+
+    private MudForm _form = default!;
+
+    private async Task SubmitAsync()
+    {
+        await _form.ValidateAsync();
+        if (_form.IsValid) MudDialog.Close(DialogResult.Ok(Form));
+    }
+
+    /// <summary>What the dialog edits.</summary>
+    public sealed class DriverForm
+    {
+        public string Username { get; set; } = "";
+        public string DisplayName { get; set; } = "";
+        public string? Phone { get; set; }
+    }
+}

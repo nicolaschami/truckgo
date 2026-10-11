@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using Scalar.AspNetCore;
+using TruckGo.Admin;
 using TruckGo.Api.Auth;
 using TruckGo.Data;
 using TruckGo.Api.Deliveries;
@@ -15,6 +16,10 @@ var builder = WebApplication.CreateBuilder(args);
 // DATABASE (PostgreSQL)
 builder.Services.AddDbContext<TruckGoDb>(o =>
     o.UseNpgsql(builder.Configuration.GetConnectionString("TruckGo")));
+// Also as a factory (one short context per call), for the shared logic in
+// TruckGo.Core/Admin that the back office uses too (e.g. DriverAdmin)
+builder.Services.AddDbContextFactory<TruckGoDb>(o =>
+    o.UseNpgsql(builder.Configuration.GetConnectionString("TruckGo")), ServiceLifetime.Scoped);
 
 // LOGIN TOKENS (JWT)
 builder.Services.AddOptions<JwtOptions>()
@@ -40,6 +45,9 @@ builder.Services.AddSingleton(TimeProvider.System);
 // INTEGRATION: the one door for master data (customers, ship-tos, plants,
 // vehicles, deliveries...). Used by the seed data now, by SQS or an API later.
 builder.Services.AddScoped<MasterDataImport>();
+
+// DRIVERS: the driver chooses their own PIN (POST /auth/change-pin)
+builder.Services.AddScoped<DriverAdmin>();
 builder.Services.AddProblemDetails();
 
 // JSON: enums as the app writes them ("inTransit"), no nulls dropped

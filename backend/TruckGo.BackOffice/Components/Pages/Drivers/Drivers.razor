@@ -1,0 +1,228 @@
+@page "/drivers"
+@attribute [Authorize(Policy = Policies.ManageDrivers)]
+@inject DriverAdmin Admin
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
+
+@* SCREEN 4 — Drivers (docs/back-office-design.md).
+   The drivers' accounts for the TruckGo app. TruckGo's own data: created,
+   edited, PIN reset, unlocked and deactivated here — never deleted.
+   Admin and Dispatcher. *@
+
+<PageTitle>Drivers · TruckGo</PageTitle>
+
+<PageHeader Title="Drivers" Subtitle="The drivers' accounts for the TruckGo app: create them, reset a forgotten PIN, unlock.">
+    <Actions>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Rounded.PersonAdd"
+                   OnClick="CreateAsync" DropShadow="false">New driver</MudButton>
+    </Actions>
+</PageHeader>
+
+@* Counters: what needs attention at a glance *@
+<div class="stat-row">
+    <StatTile Icon="@Icons.Material.Rounded.Badge" Label="Drivers" Value="@(_rows?.Count ?? 0)" Color="#2563EB" />
+    <StatTile Icon="@Icons.Material.Rounded.CheckCircle" Label="Active" Value="@(_rows?.Count(d => d.IsActive) ?? 0)" Color="#16A34A" />
+    <StatTile Icon="@Icons.Material.Rounded.Lock" Label="Locked" Value="@(_rows?.Count(d => d.IsLocked) ?? 0)" Color="#DC2626" />
+    <StatTile Icon="@Icons.Material.Rounded.Pin" Label="Must change PIN" Value="@(_rows?.Count(d => d.MustChangePin) ?? 0)" Color="#F59E0B" />
+</div>
+
+<MudPaper Class="card" Elevation="0">
+    <div class="card-toolbar">
+        <MudTextField @bind-Value="_search" Placeholder="Search username, name or phone" Immediate="true" Clearable="true"
+                      Variant="Variant.Outlined" Margin="Margin.Dense"
+                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Rounded.Search" Class="search-box" />
+        <MudSpacer />
+        <MudSwitch @bind-Value="_activeOnly" Color="Color.Primary" Label="Active only" />
+    </div>
+
+    <MudTable Items="Visible" Hover="true" Elevation="0" Loading="@(_rows is null)" Breakpoint="Breakpoint.Sm" Class="clean-table">
+        <HeaderContent>
+            <MudTh>Driver</MudTh>
+            <MudTh>Phone</MudTh>
+            <MudTh>Last login</MudTh>
+            <MudTh>Status</MudTh>
+            <MudTh></MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Driver">
+                <div class="person">
+                    <Initials Name="@context.DisplayName" />
+                    <div>
+                        <div class="person-name">@context.DisplayName</div>
+                        <div class="person-sub"><span class="code-chip">@context.Username</span></div>
+                    </div>
+                </div>
+            </MudTd>
+            <MudTd DataLabel="Phone">
+                @if (context.Phone is { } phone)
+                {
+                    <a href="tel:@phone.Replace(" ", "")" class="link">@phone</a>
+                }
+                else { <span class="muted">—</span> }
+            </MudTd>
+            <MudTd DataLabel="Last login">
+                <MudTooltip Text="@Show.DateTime(context.LastLoginAt)">
+                    <span class="muted">@Show.Ago(context.LastLoginAt)</span>
+                </MudTooltip>
+                @if (context.LastDeviceId is { } device)
+                {
+                    <div class="person-sub"><MudIcon Icon="@Icons.Material.Rounded.PhoneAndroid" Size="Size.Small" Style="font-size:.9rem;vertical-align:-2px" /> @device</div>
+                }
+            </MudTd>
+            <MudTd DataLabel="Status">
+                @* One badge per thing worth noticing; "Active" when all is fine *@
+                @if (!context.IsActive) { <span class="badge badge-gray">Inactive</span> }
+                @if (context.IsLocked) { <span class="badge badge-red">Locked</span> }
+                @if (context.MustChangePin) { <span class="badge badge-amber">Must change PIN</span> }
+                @if (context.IsActive && !context.IsLocked && !context.MustChangePin) { <span class="badge badge-green">Active</span> }
+            </MudTd>
+            <MudTd Style="text-align:right">
+                <MudMenu Icon="@Icons.Material.Rounded.MoreHoriz" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
+                         Size="Size.Small" aria-label="Actions">
+                    <MudMenuItem Icon="@Icons.Material.Rounded.Edit" OnClick="() => EditAsync(context)">Edit name and phone</MudMenuItem>
+                    <MudMenuItem Icon="@Icons.Material.Rounded.Pin" OnClick="() => ResetPinAsync(context)">Reset PIN</MudMenuItem>
+                    @if (context.IsLocked)
+                    {
+                        <MudMenuItem Icon="@Icons.Material.Rounded.LockOpen" OnClick="() => UnlockAsync(context)">Unlock</MudMenuItem>
+                    }
+                    @if (context.IsActive)
+                    {
+                        <MudMenuItem Icon="@Icons.Material.Rounded.Block" OnClick="() => SetActiveAsync(context, false)">Deactivate</MudMenuItem>
+                    }
+                    else
+                    {
+                        <MudMenuItem Icon="@Icons.Material.Rounded.Undo" OnClick="() => SetActiveAsync(context, true)">Reactivate</MudMenuItem>
+                    }
+                </MudMenu>
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent>
+            <div class="empty-table">
+                <MudIcon Icon="@Icons.Material.Rounded.PersonSearch" Size="Size.Large" />
+                <div>No driver matches.</div>
+            </div>
+        </NoRecordsContent>
+    </MudTable>
+</MudPaper>
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState> AuthState { get; set; } = default!;
+
+    private Guid _company; // only this company's drivers are shown
+    private List<DriverRow>? _rows;
+    private string _search = "";
+    private bool _activeOnly = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _company = (await AuthState).User.CompanyId()!.Value; // Admin and Dispatcher always have a company
+        await ReloadAsync();
+    }
+
+    private async Task ReloadAsync() => _rows = await Admin.ListAsync(_company);
+
+    // The rows after the search box and the "active only" switch
+    private IEnumerable<DriverRow> Visible => (_rows ?? [])
+        .Where(d => !_activeOnly || d.IsActive)
+        .Where(d => string.IsNullOrWhiteSpace(_search)
+            || d.Username.Contains(_search, StringComparison.OrdinalIgnoreCase)
+            || d.DisplayName.Contains(_search, StringComparison.OrdinalIgnoreCase)
+            || (d.Phone ?? "").Contains(_search, StringComparison.OrdinalIgnoreCase));
+
+    // ---- Actions ----
+
+    private async Task CreateAsync()
+    {
+        var form = await AskAsync("New driver", new DriverDialog.DriverForm(), isNew: true);
+        if (form is null) return;
+
+        await RunAsync(async () =>
+        {
+            var pin = await Admin.CreateAsync(_company, form.Username, form.DisplayName, form.Phone);
+            await ShowPinAsync("Driver created",
+                $"Give this PIN to {form.DisplayName}. Their username in the app is {DriverAdmin.NormalizeUsername(form.Username)}. The app will ask them to choose their own PIN.", pin);
+        });
+    }
+
+    private async Task EditAsync(DriverRow row)
+    {
+        var form = await AskAsync("Edit driver",
+            new DriverDialog.DriverForm { Username = row.Username, DisplayName = row.DisplayName, Phone = row.Phone }, isNew: false);
+        if (form is null) return;
+
+        await RunAsync(async () =>
+        {
+            await Admin.UpdateAsync(_company, row.Id, form.DisplayName, form.Phone);
+            Snackbar.Add($"{form.DisplayName} saved.", Severity.Success);
+        });
+    }
+
+    private async Task ResetPinAsync(DriverRow row)
+    {
+        if (!await ConfirmAsync("Reset PIN",
+                $"{row.DisplayName} gets a new PIN and must choose their own at the next login in the app. Their current PIN stops working.",
+                "Reset PIN")) return;
+
+        await RunAsync(async () =>
+        {
+            var pin = await Admin.ResetPinAsync(_company, row.Id);
+            await ShowPinAsync("PIN reset", $"Give this new PIN to {row.DisplayName} (username {row.Username}).", pin);
+        });
+    }
+
+    private Task UnlockAsync(DriverRow row) => RunAsync(async () =>
+    {
+        await Admin.UnlockAsync(_company, row.Id);
+        Snackbar.Add($"{row.DisplayName} can log in again.", Severity.Success);
+    });
+
+    private async Task SetActiveAsync(DriverRow row, bool active)
+    {
+        if (!active && !await ConfirmAsync("Deactivate driver",
+                $"{row.DisplayName} will no longer be able to log in to the app. Their deliveries and history are kept, and you can reactivate them later.",
+                "Deactivate")) return;
+
+        await RunAsync(async () =>
+        {
+            await Admin.SetActiveAsync(_company, row.Id, active);
+            Snackbar.Add($"{row.DisplayName} {(active ? "reactivated" : "deactivated")}.", Severity.Success);
+        });
+    }
+
+    // ---- Helpers (the same pattern as the Users screen) ----
+
+    /// <summary>Runs an action, shows a refused request as a message, then refreshes the list.</summary>
+    private async Task RunAsync(Func<Task> action)
+    {
+        try
+        {
+            await action();
+        }
+        catch (AdminException e)
+        {
+            Snackbar.Add(e.Message, Severity.Error);
+        }
+        await ReloadAsync();
+    }
+
+    private async Task<DriverDialog.DriverForm?> AskAsync(string title, DriverDialog.DriverForm form, bool isNew)
+    {
+        var dialog = await Dialogs.ShowAsync<DriverDialog>(title,
+            new DialogParameters<DriverDialog> { { d => d.Form, form }, { d => d.IsNew, isNew } },
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        var result = await dialog.Result;
+        return result is { Canceled: false } ? result.Data as DriverDialog.DriverForm : null;
+    }
+
+    private async Task ShowPinAsync(string title, string message, string pin)
+    {
+        var dialog = await Dialogs.ShowAsync<SecretOnceDialog>(title,
+            new DialogParameters<SecretOnceDialog> { { d => d.Message, message }, { d => d.Secret, pin } },
+            // Only the Done button closes it: the PIN must not vanish by a stray click
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, BackdropClick = false, CloseOnEscapeKey = false });
+        await dialog.Result;
+    }
+
+    private async Task<bool> ConfirmAsync(string title, string message, string yes) =>
+        await Dialogs.ShowMessageBoxAsync(title, message, yesText: yes, cancelText: "Cancel") == true;
+}
