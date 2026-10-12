@@ -208,7 +208,7 @@ body {
 }
 
 .search-box {
-    max-width: 340px;
+    max-width: 460px;
     min-width: 220px;
 }
 
@@ -335,12 +335,35 @@ body {
     white-space: nowrap;
 }
 
-.badge-blue { background: #DBEAFE; color: #1E40AF; }
-.badge-purple { background: #EDE9FE; color: #5B21B6; }
-.badge-green { background: #DCFCE7; color: #166534; }
-.badge-amber { background: #FEF3C7; color: #92400E; }
-.badge-red { background: #FEE2E2; color: #991B1B; }
-.badge-gray { background: #F1F5F9; color: #475569; }
+.badge-blue {
+    background: #DBEAFE;
+    color: #1E40AF;
+}
+
+.badge-purple {
+    background: #EDE9FE;
+    color: #5B21B6;
+}
+
+.badge-green {
+    background: #DCFCE7;
+    color: #166534;
+}
+
+.badge-amber {
+    background: #FEF3C7;
+    color: #92400E;
+}
+
+.badge-red {
+    background: #FEE2E2;
+    color: #991B1B;
+}
+
+.badge-gray {
+    background: #F1F5F9;
+    color: #475569;
+}
 
 /* Settings: cards in a grid, icon + title on top */
 .settings-grid {
@@ -506,7 +529,7 @@ body {
     padding: 0;
 }
 
-.sidebar.mud-drawer--closed .brand > span:last-child {
+.sidebar.mud-drawer--closed .brand>span:last-child {
     display: none;
 }
 
@@ -737,7 +760,8 @@ body {
     margin-top: 12px;
     border-top: 1px solid var(--tg-line);
     background: #E8EEF5;
-    z-index: 0; /* keep Leaflet's layers under menus and dialogs */
+    z-index: 0;
+    /* keep Leaflet's layers under menus and dialogs */
 }
 
 .map-view .leaflet-tooltip {

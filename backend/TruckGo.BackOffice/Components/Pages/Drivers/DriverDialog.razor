@@ -5,8 +5,7 @@
     <DialogContent>
         <MudForm @ref="_form">
             <MudTextField @bind-Value="Form.Username" Label="Username (used to log in to the app)" Required="true"
-                          RequiredError="Please enter a username." Variant="Variant.Outlined"
-                          Disabled="@(!IsNew)"
+                          RequiredError="Please enter a username." Variant="Variant.Outlined" Disabled="@(!IsNew)"
                           HelperText="@(IsNew ? "3 to 30 letters or digits, no spaces — e.g. jperez" : "The username never changes.")" />
             <MudTextField @bind-Value="Form.DisplayName" Label="Name" Required="true" Variant="Variant.Outlined"
                           RequiredError="Please enter the driver's name." Class="mt-3" />
@@ -15,7 +14,8 @@
             @if (IsNew)
             {
                 <MudText Typo="Typo.body2" Class="mt-4 muted">
-                    TruckGo creates a 4-digit PIN and shows it once. The driver chooses their own PIN at the first login in the app.
+                    TruckGo creates a 4-digit PIN and shows it once. The driver chooses their own PIN at the first login in
+                    the app.
                 </MudText>
             }
         </MudForm>

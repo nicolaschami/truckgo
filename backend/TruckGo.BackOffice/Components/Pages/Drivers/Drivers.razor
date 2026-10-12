@@ -11,7 +11,8 @@
 
 <PageTitle>Drivers · TruckGo</PageTitle>
 
-<PageHeader Title="Drivers" Subtitle="The drivers' accounts for the TruckGo app: create them, reset a forgotten PIN, unlock.">
+<PageHeader Title="Drivers"
+            Subtitle="The drivers' accounts for the TruckGo app: create them, reset a forgotten PIN, unlock.">
     <Actions>
         <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Rounded.PersonAdd"
                    OnClick="CreateAsync" DropShadow="false">New driver</MudButton>
@@ -21,21 +22,25 @@
 @* Counters: what needs attention at a glance *@
 <div class="stat-row">
     <StatTile Icon="@Icons.Material.Rounded.Badge" Label="Drivers" Value="@(_rows?.Count ?? 0)" Color="#2563EB" />
-    <StatTile Icon="@Icons.Material.Rounded.CheckCircle" Label="Active" Value="@(_rows?.Count(d => d.IsActive) ?? 0)" Color="#16A34A" />
-    <StatTile Icon="@Icons.Material.Rounded.Lock" Label="Locked" Value="@(_rows?.Count(d => d.IsLocked) ?? 0)" Color="#DC2626" />
-    <StatTile Icon="@Icons.Material.Rounded.Pin" Label="Must change PIN" Value="@(_rows?.Count(d => d.MustChangePin) ?? 0)" Color="#F59E0B" />
+    <StatTile Icon="@Icons.Material.Rounded.CheckCircle" Label="Active" Value="@(_rows?.Count(d => d.IsActive) ?? 0)"
+              Color="#16A34A" />
+    <StatTile Icon="@Icons.Material.Rounded.Lock" Label="Locked" Value="@(_rows?.Count(d => d.IsLocked) ?? 0)"
+              Color="#DC2626" />
+    <StatTile Icon="@Icons.Material.Rounded.Pin" Label="Must change PIN"
+              Value="@(_rows?.Count(d => d.MustChangePin) ?? 0)" Color="#F59E0B" />
 </div>
 
 <MudPaper Class="card" Elevation="0">
     <div class="card-toolbar">
-        <MudTextField @bind-Value="_search" Placeholder="Search username, name or phone" Immediate="true" Clearable="true"
-                      Variant="Variant.Outlined" Margin="Margin.Dense"
+        <MudTextField @bind-Value="_search" Placeholder="Search for a driver by username, name or phone"
+                      Immediate="true" Clearable="true" Variant="Variant.Outlined" Margin="Margin.Dense"
                       Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Rounded.Search" Class="search-box" />
         <MudSpacer />
         <MudSwitch @bind-Value="_activeOnly" Color="Color.Primary" Label="Active only" />
     </div>
 
-    <MudTable Items="Visible" Hover="true" Elevation="0" Loading="@(_rows is null)" Breakpoint="Breakpoint.Sm" Class="clean-table">
+    <MudTable Items="Visible" Hover="true" Elevation="0" Loading="@(_rows is null)" Breakpoint="Breakpoint.Sm"
+              Class="clean-table">
         <HeaderContent>
             <MudTh>Driver</MudTh>
             <MudTh>Phone</MudTh>
@@ -58,7 +63,11 @@
                 {
                     <a href="tel:@phone.Replace(" ", "")" class="link">@phone</a>
                 }
-                else { <span class="muted">—</span> }
+                else
+                {
+
+                    <span class="muted">—</span>
+                }
             </MudTd>
             <MudTd DataLabel="Last login">
                 <MudTooltip Text="@Show.DateTime(context.LastLoginAt)">
@@ -66,44 +75,64 @@
                 </MudTooltip>
                 @if (context.LastDeviceId is { } device)
                 {
-                    <div class="person-sub"><MudIcon Icon="@Icons.Material.Rounded.PhoneAndroid" Size="Size.Small" Style="font-size:.9rem;vertical-align:-2px" /> @device</div>
+                    <div class="person-sub">
+                        <MudIcon Icon="@Icons.Material.Rounded.PhoneAndroid" Size="Size.Small"
+                                 Style="font-size:.9rem;vertical-align:-2px" /> @device
+                    </div>
                 }
             </MudTd>
             <MudTd DataLabel="Status">
                 @* One badge per thing worth noticing; "Active" when all is fine *@
-                @if (!context.IsActive) { <span class="badge badge-gray">Inactive</span> }
-                @if (context.IsLocked) { <span class="badge badge-red">Locked</span> }
-                @if (context.MustChangePin) { <span class="badge badge-amber">Must change PIN</span> }
-                @if (context.IsActive && !context.IsLocked && !context.MustChangePin) { <span class="badge badge-green">Active</span> }
+                @if (!context.IsActive)
+                {
+                    <span class="badge badge-gray">Inactive</span>
+                }
+                @if (context.IsLocked)
+                {
+                    <span class="badge badge-red">Locked</span>
+                }
+                @if (context.MustChangePin)
+                {
+                    <span class="badge badge-amber">Must change PIN</span>
+                }
+                @if (context.IsActive && !context.IsLocked && !context.MustChangePin)
+                {
+                    <span class="badge badge-green">Active</span>
+                }
             </MudTd>
             <MudTd Style="text-align:right">
-                <MudMenu Icon="@Icons.Material.Rounded.MoreHoriz" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
-                         Size="Size.Small" aria-label="Actions">
-                    <MudMenuItem Icon="@Icons.Material.Rounded.Edit" OnClick="() => EditAsync(context)">Edit name and phone</MudMenuItem>
-                    <MudMenuItem Icon="@Icons.Material.Rounded.Pin" OnClick="() => ResetPinAsync(context)">Reset PIN</MudMenuItem>
-                    @if (context.IsLocked)
-                    {
-                        <MudMenuItem Icon="@Icons.Material.Rounded.LockOpen" OnClick="() => UnlockAsync(context)">Unlock</MudMenuItem>
-                    }
-                    @if (context.IsActive)
-                    {
-                        <MudMenuItem Icon="@Icons.Material.Rounded.Block" OnClick="() => SetActiveAsync(context, false)">Deactivate</MudMenuItem>
-                    }
+                <MudMenu Icon="@Icons.Material.Rounded.MoreHoriz" AnchorOrigin="Origin.BottomRight"
+                         TransformOrigin="Origin.TopRight" Size="Size.Small" aria-label="Actions">
+                    <MudMenuItem Icon="@Icons.Material.Rounded.Edit" OnClick="() => EditAsync(context)">Edit name and
+                        phone</MudMenuItem>
+                        <MudMenuItem Icon="@Icons.Material.Rounded.Pin" OnClick="() => ResetPinAsync(context)">Reset PIN
+                        </MudMenuItem>
+                        @if (context.IsLocked)
+                        {
+                            <MudMenuItem Icon="@Icons.Material.Rounded.LockOpen" OnClick="() => UnlockAsync(context)">Unlock
+                            </MudMenuItem>
+                        }
+                        @if (context.IsActive)
+                        {
+                            <MudMenuItem Icon="@Icons.Material.Rounded.Block" OnClick="() => SetActiveAsync(context, false)">
+                                Deactivate</MudMenuItem>
+                            }
                     else
-                    {
-                        <MudMenuItem Icon="@Icons.Material.Rounded.Undo" OnClick="() => SetActiveAsync(context, true)">Reactivate</MudMenuItem>
-                    }
-                </MudMenu>
-            </MudTd>
-        </RowTemplate>
-        <NoRecordsContent>
-            <div class="empty-table">
-                <MudIcon Icon="@Icons.Material.Rounded.PersonSearch" Size="Size.Large" />
-                <div>No driver matches.</div>
-            </div>
-        </NoRecordsContent>
-    </MudTable>
-</MudPaper>
+                            {
+                                <MudMenuItem Icon="@Icons.Material.Rounded.Undo" OnClick="() => SetActiveAsync(context, true)">
+                                    Reactivate</MudMenuItem>
+                                }
+                            </MudMenu>
+                        </MudTd>
+                    </RowTemplate>
+                    <NoRecordsContent>
+                        <div class="empty-table">
+                            <MudIcon Icon="@Icons.Material.Rounded.PersonSearch" Size="Size.Large" />
+                            <div>No driver matches.</div>
+                        </div>
+                    </NoRecordsContent>
+                </MudTable>
+            </MudPaper>
 
 @code {
     [CascadingParameter] private Task<AuthenticationState> AuthState { get; set; } = default!;
@@ -147,7 +176,8 @@
     private async Task EditAsync(DriverRow row)
     {
         var form = await AskAsync("Edit driver",
-            new DriverDialog.DriverForm { Username = row.Username, DisplayName = row.DisplayName, Phone = row.Phone }, isNew: false);
+            new DriverDialog.DriverForm { Username = row.Username, DisplayName = row.DisplayName, Phone = row.Phone }, isNew:
+false);
         if (form is null) return;
 
         await RunAsync(async () =>
