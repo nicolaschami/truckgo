@@ -261,6 +261,33 @@ namespace TruckGo.Data.Migrations
                     b.ToTable("Deliveries");
                 });
 
+            modelBuilder.Entity("TruckGo.Data.DeliveryRemoval", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("DeliveryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("RemovedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("TruckPlate")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeliveryId");
+
+                    b.HasIndex("CompanyId", "TruckPlate", "RemovedAt");
+
+                    b.ToTable("DeliveryRemovals");
+                });
+
             modelBuilder.Entity("TruckGo.Data.Driver", b =>
                 {
                     b.Property<Guid>("Id")
@@ -674,6 +701,17 @@ namespace TruckGo.Data.Migrations
                     b.Navigation("Plant");
 
                     b.Navigation("ShipTo");
+                });
+
+            modelBuilder.Entity("TruckGo.Data.DeliveryRemoval", b =>
+                {
+                    b.HasOne("TruckGo.Data.Delivery", "Delivery")
+                        .WithMany()
+                        .HasForeignKey("DeliveryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Delivery");
                 });
 
             modelBuilder.Entity("TruckGo.Data.Driver", b =>

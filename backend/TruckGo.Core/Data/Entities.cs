@@ -281,6 +281,30 @@ public class Weighing
     public string? Weighbridge { get; set; }
 }
 
+/// <summary>
+/// A note that a delivery LEFT a truck: the dispatching system moved it to
+/// another truck, or took it off any truck. Written by the import door.
+///
+/// Why: the app asks "what changed for MY truck since…?". A delivery moved
+/// to another truck no longer belongs to this truck, so it would never show
+/// up in that answer — the old truck's phone would keep it forever. These
+/// notes let the server tell the old truck "this one is not yours any more".
+/// </summary>
+public class DeliveryRemoval
+{
+    public Guid Id { get; set; }
+    public Guid CompanyId { get; set; }
+
+    /// <summary>The truck the delivery was taken FROM.</summary>
+    public required string TruckPlate { get; set; }
+
+    public Guid DeliveryId { get; set; }
+    public Delivery Delivery { get; set; } = null!;
+
+    /// <summary>When it was taken off the truck (server clock, UTC).</summary>
+    public DateTime RemovedAt { get; set; }
+}
+
 // ----------------------------------------------------------------------------
 // WHAT THE APP RECORDS (sent by the driver app)
 // ----------------------------------------------------------------------------

@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using TruckGo.Data;
 using TruckGo.Api.Deliveries;
+using TruckGo.Integration;
 
 namespace TruckGo.Api.Tests;
 
@@ -106,6 +107,97 @@ public class DeliveryTests
         Assert.Equal("422211", d.Number);
         Assert.Equal(14.1, d.TareTons);
         Assert.Equal(DeliveryStatus.Loading, d.Status);
+    }
+
+    [Fact]
+    public async Task The_full_list_leaves_out_deliveries_finished_long_ago()
+    {
+        using var api = await new TestApi().SeededAsync();
+        var client = await api.LoggedInAsync();
+
+        // 421987 was delivered a month ago: the phone no longer keeps it
+        await api.WithDbAsync(async db =>
+        {
+            var d = await db.Deliveries.SingleAsync(x => x.Number == "421987");
+            d.UpdatedAt = DateTime.UtcNow.AddDays(-30);
+            await db.SaveChangesAsync();
+        });
+
+        var all = await client.GetFromJsonAsync<DeliveriesResponse>("/api/v1/trucks/AB-1234/deliveries", Json);
+        Assert.DoesNotContain(all!.Deliveries, d => d.Number == "421987");
+        Assert.Contains(all.Deliveries, d => d.Number == "422211"); // open: always there
+    }
+
+    // --- A delivery moved to another truck ------------------------------------
+
+    /// <summary>The other system re-sends delivery 422211 with another truck (or none).</summary>
+    private static Task MoveAsync(TestApi api, string? truck) =>
+        api.ImportAsync((import, company) => import.SaveDeliveryAsync(company, new DeliveryMessage(
+            "QN2", "422211", "30771239", "100245", "100245-01", "AC 32 dense base 40/60", 20,
+            DateTime.UtcNow, DateTime.UtcNow, DateTime.UtcNow.AddMinutes(30), TruckPlate: truck)));
+
+    /// <summary>Asks for a truck's deliveries, and returns the ServerTime to use as ?since= next.</summary>
+    private static async Task<string> SinceAsync(HttpClient client, string truck)
+    {
+        var first = await client.GetFromJsonAsync<DeliveriesResponse>($"/api/v1/trucks/{truck}/deliveries", Json);
+        Assert.Empty(first!.Removed); // never anything removed in a full list
+        return Uri.EscapeDataString(first.ServerTime.ToString("O"));
+    }
+
+    private static async Task<DeliveriesResponse> ChangesAsync(HttpClient client, string truck, string since) =>
+        (await client.GetFromJsonAsync<DeliveriesResponse>($"/api/v1/trucks/{truck}/deliveries?since={since}", Json))!;
+
+    [Fact]
+    public async Task A_delivery_moved_to_another_truck_leaves_the_old_one_and_reaches_the_new_one()
+    {
+        using var api = await new TestApi().SeededAsync();
+        var client = await api.LoggedInAsync();
+        var sinceOld = await SinceAsync(client, "AB-1234");
+        var sinceNew = await SinceAsync(client, "TG-5821");
+
+        await MoveAsync(api, "TG-5821");
+
+        // The old truck: told to remove it, and it is not in its list any more
+        var old = await ChangesAsync(client, "AB-1234", sinceOld);
+        Assert.Equal(new DeliveryKeyDto("QN2", "422211"), Assert.Single(old.Removed));
+        Assert.DoesNotContain(old.Deliveries, d => d.Number == "422211");
+
+        // The new truck: a new delivery for it, nothing removed
+        var @new = await ChangesAsync(client, "TG-5821", sinceNew);
+        Assert.Equal("TG-5821", Assert.Single(@new.Deliveries, d => d.Number == "422211").TruckPlate);
+        Assert.Empty(@new.Removed);
+
+        // The old truck's next question, after that answer: nothing more to do
+        var later = await ChangesAsync(client, "AB-1234", Uri.EscapeDataString(old.ServerTime.ToString("O")));
+        Assert.Empty(later.Removed);
+    }
+
+    [Fact]
+    public async Task A_delivery_moved_away_and_back_is_simply_changed()
+    {
+        using var api = await new TestApi().SeededAsync();
+        var client = await api.LoggedInAsync();
+        var since = await SinceAsync(client, "AB-1234");
+
+        await MoveAsync(api, "TG-5821");
+        await MoveAsync(api, "AB-1234"); // the dispatcher changes their mind
+
+        var changes = await ChangesAsync(client, "AB-1234", since);
+        Assert.Empty(changes.Removed);
+        Assert.Single(changes.Deliveries, d => d.Number == "422211");
+    }
+
+    [Fact]
+    public async Task A_delivery_taken_off_every_truck_is_removed_from_the_old_one()
+    {
+        using var api = await new TestApi().SeededAsync();
+        var client = await api.LoggedInAsync();
+        var since = await SinceAsync(client, "AB-1234");
+
+        await MoveAsync(api, truck: null);
+
+        var changes = await ChangesAsync(client, "AB-1234", since);
+        Assert.Equal("422211", Assert.Single(changes.Removed).Number);
     }
 
     [Fact]

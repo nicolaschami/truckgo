@@ -47,7 +47,7 @@ for a few minutes.
 |---|---|---|
 | GET | `/vehicles` | trucks and trailers (with status) for truck selection |
 | PUT | `/drivers/me/truck` | `{truckPlate, trailerPlates[]}` — the driver ↔ truck link; also told to dispatching |
-| GET | `/trucks/{plate}/deliveries?since=` | the truck's deliveries, **including plant + site coordinates and radius, status, 1st and 2nd weights**. `since` returns only what changed (cheap to call often) |
+| GET | `/trucks/{plate}/deliveries?since=` | the truck's deliveries, **including plant + site coordinates and radius, status, 1st and 2nd weights**. `since` returns only what changed (cheap to call often), plus `removed`: deliveries moved to another truck since then (the app polls this every 60 s) |
 | GET | `/deliveries/{plant}/{number}` | one delivery — used every few seconds at the weighbridge to get the **1st / 2nd weight** |
 
 The weights are fields of the delivery (`tareTons`, `grossTons`, their

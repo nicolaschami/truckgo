@@ -25,6 +25,7 @@ public class TruckGoDb(DbContextOptions<TruckGoDb> options) : DbContext(options)
     public DbSet<Vehicle> Vehicles => Set<Vehicle>();
     public DbSet<Delivery> Deliveries => Set<Delivery>();
     public DbSet<Weighing> Weighings => Set<Weighing>();
+    public DbSet<DeliveryRemoval> DeliveryRemovals => Set<DeliveryRemoval>();
 
     // What the driver app records
     public DbSet<GpsPosition> Positions => Set<GpsPosition>();
@@ -98,6 +99,9 @@ public class TruckGoDb(DbContextOptions<TruckGoDb> options) : DbContext(options)
             d.HasOne(x => x.ShipTo).WithMany().OnDelete(DeleteBehavior.Restrict);
             d.HasOne(x => x.Plant).WithMany().OnDelete(DeleteBehavior.Restrict);
         });
+
+        // For the app's "taken off my truck since..." part of the same call
+        model.Entity<DeliveryRemoval>().HasIndex(x => new { x.CompanyId, x.TruckPlate, x.RemovedAt });
 
         // --- What the app records ---
 

@@ -135,6 +135,7 @@ public class MasterDataImport(TruckGoDb db, TimeProvider clock)
     /// Creates or re-plans a delivery. A new delivery starts as Assigned. On an
     /// existing one the status is left alone — the app moves it forward —
     /// except a cancellation. A delivery already Delivered cannot be cancelled.
+    /// A change of truck leaves a DeliveryRemoval note for the old truck.
     /// </summary>
     public async Task<Delivery> SaveDeliveryAsync(Guid companyId, DeliveryMessage m)
     {
@@ -158,6 +159,18 @@ public class MasterDataImport(TruckGoDb db, TimeProvider clock)
                 Material = m.Material,
                 Status = DeliveryStatus.Assigned,
             });
+
+        // Moved to another truck, or taken off any truck: leave a note for
+        // the old truck, so its phone learns the delivery is not its own any
+        // more (the new truck simply sees it as a new delivery)
+        if (row.TruckPlate is { } oldTruck && oldTruck != m.TruckPlate)
+        {
+            db.DeliveryRemovals.Add(new DeliveryRemoval
+            {
+                Id = Guid.NewGuid(), CompanyId = companyId, TruckPlate = oldTruck,
+                DeliveryId = row.Id, RemovedAt = Now,
+            });
+        }
 
         row.OrderNumber = m.OrderNumber;
         row.CustomerId = customer.Id;

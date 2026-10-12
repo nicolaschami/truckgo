@@ -58,8 +58,22 @@ public record DeliveryDto(
     DeliveryStatus Status,
     DateTime UpdatedAt);
 
-/// <summary>"since" lets the app ask only for what changed since its last call.</summary>
-public record DeliveriesResponse(DateTime ServerTime, IReadOnlyList<DeliveryDto> Deliveries);
+/// <summary>A delivery identified by its key (plant + number), nothing more.</summary>
+public record DeliveryKeyDto(string PlantCode, string Number);
+
+/// <summary>
+/// The answer to "deliveries of my truck". The app keeps
+/// <paramref name="ServerTime"/> and sends it back as ?since= next time.
+/// <list type="bullet">
+/// <item><paramref name="Deliveries"/>: new or changed deliveries of the truck
+///   (all of them when there is no ?since=) — add or update them.</item>
+/// <item><paramref name="Removed"/>: deliveries taken off the truck since then
+///   (moved to another truck) — remove them from the phone's list. Always
+///   empty without ?since=, because the full list is then exact.</item>
+/// </list>
+/// </summary>
+public record DeliveriesResponse(
+    DateTime ServerTime, IReadOnlyList<DeliveryDto> Deliveries, IReadOnlyList<DeliveryKeyDto> Removed);
 
 public static class DeliveryEndpoints
 {
@@ -71,11 +85,14 @@ public static class DeliveryEndpoints
             .WithSummary("Active trucks and trailers of the driver's company");
 
         group.MapGet("/trucks/{plate}/deliveries", GetTruckDeliveries)
-            .WithSummary("Deliveries assigned to a truck; with ?since= only those changed since then");
+            .WithSummary("Deliveries assigned to a truck; with ?since= only those changed since then, plus those taken off the truck");
 
         group.MapGet("/deliveries/{plantCode}/{number}", GetDelivery)
             .WithSummary("One delivery, with its 1st and 2nd weight (polled at the weighbridge)");
     }
+
+    /// <summary>The phone keeps finished deliveries this long (AppDatabase.keepDays in the app).</summary>
+    private const int PhoneKeepsDays = 7;
 
     /// <summary>Statuses of a delivery that has started but is not finished.</summary>
     private static readonly DeliveryStatus[] Underway =
@@ -121,10 +138,29 @@ public static class DeliveryEndpoints
 
         var query = db.Deliveries
             .Where(d => d.CompanyId == company && d.TruckPlate == plate);
-        if (since is { } s)
+        List<DeliveryKeyDto> removed = [];
+        if (since is null)
+        {
+            // The full list at login: the open deliveries, and the finished
+            // ones of the last 7 days (what the phone keeps) — not the
+            // truck's whole history
+            var weekAgo = serverTime.AddDays(-PhoneKeepsDays);
+            query = query.Where(d => (d.Status != DeliveryStatus.Delivered && d.Status != DeliveryStatus.Cancelled)
+                || d.UpdatedAt >= weekAgo);
+        }
+        else if (since is { } s)
         {
             var sinceUtc = s.ToUniversalTime();
             query = query.Where(d => d.UpdatedAt > sinceUtc);
+
+            // Taken off this truck since then — unless it has come back to it
+            // meanwhile (then it is simply in the deliveries list)
+            removed = await db.DeliveryRemovals
+                .Where(r => r.CompanyId == company && r.TruckPlate == plate && r.RemovedAt > sinceUtc
+                    && r.Delivery.TruckPlate != plate)
+                .Select(r => new DeliveryKeyDto(r.Delivery.Plant.ExternalCode, r.Delivery.Number))
+                .Distinct()
+                .ToListAsync();
         }
 
         var rows = await WithDetails(query)
@@ -132,7 +168,7 @@ public static class DeliveryEndpoints
             .ToListAsync();
 
         var radius = await GeofenceRadiusAsync(db, company);
-        return Results.Ok(new DeliveriesResponse(serverTime, rows.Select(d => ToDto(d, radius)).ToList()));
+        return Results.Ok(new DeliveriesResponse(serverTime, rows.Select(d => ToDto(d, radius)).ToList(), removed));
     }
 
     private static async Task<IResult> GetDelivery(
