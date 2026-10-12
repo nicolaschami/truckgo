@@ -19,7 +19,7 @@ class ActivityRecord {
 ///
 /// Every change is applied in memory first (the screen updates at once) and
 /// then saved to SQLite, together with the event to send to dispatching.
-/// Later, the API client will feed it from the server.
+/// The server's deliveries arrive through [applyFromServer] (see DeliverySync).
 class DeliveryStore extends ChangeNotifier {
   DeliveryStore._();
 
@@ -31,18 +31,14 @@ class DeliveryStore extends ChangeNotifier {
   /// The truck whose deliveries are loaded.
   String? get truckPlate => _truckPlate;
 
-  /// Loads the deliveries of [truckPlate] (none when null).
-  // TODO: refresh from the API before reading the table.
+  /// Loads the deliveries of [truckPlate] stored on the phone (none when
+  /// null). The server's news arrive through [applyFromServer].
   Future<void> loadForTruck(String? truckPlate) async {
     _truckPlate = truckPlate;
     if (truckPlate == null) {
       _deliveries = [];
     } else {
-      final db = AppDatabase.db;
-      final any = await db.query('deliveries', columns: ['1'], limit: 1);
-      if (any.isEmpty) await AppDatabase.seedTestDeliveries(truckPlate);
-
-      final rows = await db.rawQuery(
+      final rows = await AppDatabase.db.rawQuery(
           '${AppDatabase.deliverySelect} WHERE d.truck_plate = ?',
           [truckPlate]);
       _deliveries = rows.map(AppDatabase.deliveryFromRow).toList();
@@ -50,12 +46,112 @@ class DeliveryStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Debug: gives the current truck a fresh set of test deliveries.
-  Future<void> resetTestData() async {
+  /// Applies the server's answer to "deliveries of my truck" (DeliverySync
+  /// calls this every minute):
+  ///  - [incoming]: new deliveries are added, changed ones updated;
+  ///  - [removedKeys]: deliveries taken off the truck are removed;
+  ///  - [fullList]: the server sent ALL the truck's deliveries, so any other
+  ///    delivery of this truck on the phone is not the truck's any more.
+  ///
+  /// The status only ever moves forward: the phone may already be further
+  /// (e.g. "At plant" from the geofence, not yet sent), and then keeps its
+  /// own. Weights from the server move the status as before (1st weight =
+  /// Loading, 2nd = In transit), and a cancellation always applies.
+  ///
+  /// Returns the removed deliveries the driver had already started, so the
+  /// app can tell them why it disappeared.
+  Future<List<Delivery>> applyFromServer(
+    List<Delivery> incoming,
+    List<String> removedKeys, {
+    required bool fullList,
+  }) async {
     final truck = _truckPlate;
-    if (truck == null) return;
-    await AppDatabase.seedTestDeliveries(truck);
+    if (truck == null) return [];
+
+    // What to remove: what the server says, and on a full list everything
+    // it no longer lists; never something it has just sent
+    final incomingKeys = {for (final d in incoming) d.key};
+    final toRemove = {
+      ...removedKeys,
+      if (fullList) ..._deliveries.map((d) => d.key),
+    }..removeAll(incomingKeys);
+
+    final removedStarted = <Delivery>[];
+    final moveForward = <String, DeliveryStatus>{};
+    final db = AppDatabase.db;
+
+    await db.transaction((txn) async {
+      for (final d in incoming) {
+        // The plant comes with every delivery (name, place, zone)
+        final plant = {
+          'name': d.shippingPoint,
+          'latitude': d.plantLatitude,
+          'longitude': d.plantLongitude,
+          'geofence_radius_m': d.plantGeofenceRadiusM,
+        };
+        final changed = await txn.update('plants', plant,
+            where: 'plant_code = ?', whereArgs: [d.plantCode]);
+        if (changed == 0) {
+          await txn.insert('plants', {'plant_code': d.plantCode, ...plant});
+        }
+
+        final where = 'delivery_number = ? AND plant_code = ?';
+        final args = [d.number, d.plantCode];
+        final local = await txn.query('deliveries',
+            columns: ['status'], where: where, whereArgs: args);
+
+        if (local.isEmpty) {
+          // New for this phone: stored as the server sent it
+          await txn.insert('deliveries',
+              AppDatabase.deliveryToRow(d.copyWith(status: _statusFromServer(d))));
+          continue;
+        }
+
+        // Known: take every field from the server except the status...
+        final row = AppDatabase.deliveryToRow(d)..remove('status');
+        await txn.update('deliveries', row, where: where, whereArgs: args);
+
+        // ...which only moves forward (setStatus below records the event)
+        final mine = DeliveryStatus.values.byName(local.first['status'] as String);
+        final target = _statusFromServer(d);
+        if (target != mine) moveForward[d.key] = target;
+      }
+
+      for (final key in toRemove) {
+        final d = byKey(key);
+        if (d == null) continue;
+        // Started but not finished: the driver must be told
+        if (d.status != DeliveryStatus.assigned && !d.status.isFinished) {
+          removedStarted.add(d);
+        }
+        // Only the delivery itself: its unsent statuses, positions and
+        // proof stay and are still sent (never delete unsent data)
+        await txn.delete('deliveries',
+            where: 'delivery_number = ? AND plant_code = ?',
+            whereArgs: [d.number, d.plantCode]);
+      }
+    });
+
     await loadForTruck(truck);
+    // setStatus ignores a step backwards, so the phone's own progress stays
+    for (final e in moveForward.entries) {
+      await setStatus(e.key, e.value, trigger: StatusTrigger.dispatch);
+    }
+    return removedStarted;
+  }
+
+  /// The status the server's data stands for: its own status, moved on by
+  /// the weights it carries (the server does not move it for weights yet).
+  static DeliveryStatus _statusFromServer(Delivery d) {
+    var status = d.status;
+    if (status.isFinished) return status;
+    if (d.grossTons != null && status.index < DeliveryStatus.inTransit.index) {
+      status = DeliveryStatus.inTransit;
+    } else if (d.tareTons != null &&
+        status.index < DeliveryStatus.loading.index) {
+      status = DeliveryStatus.loading;
+    }
+    return status;
   }
 
   /// Debug: moves the plant (all its deliveries) or the customer site of

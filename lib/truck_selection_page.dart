@@ -2,6 +2,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
+import 'api/api_client.dart';
 import 'data/session_store.dart';
 import 'login_page.dart';
 import 'mock_vehicles.dart';
@@ -48,8 +49,25 @@ class _TruckSelectionPageState extends State<TruckSelectionPage> {
     _load();
   }
 
-  // Vehicles from the database, with the driver's remembered truck selected.
+  // Vehicles from the server (the last list received when offline), with the
+  // driver's remembered truck selected.
   Future<void> _load() async {
+    try {
+      await _session.refreshVehicles();
+    } on ApiException catch (e) {
+      if (e.kind == ApiErrorKind.unauthorized) {
+        // The login has expired: back to the login screen
+        await _logout();
+        return;
+      }
+      // Offline: carry on with the stored list, and say why it may be old
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('${e.message} Showing the last known vehicles.'),
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    }
     final trucks = await _session.vehicles(trucks: true);
     final trailers = await _session.vehicles(trucks: false);
     final link = await _session.truckLink();

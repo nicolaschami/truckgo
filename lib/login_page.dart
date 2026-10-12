@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:another_flushbar/another_flushbar.dart';
 import 'truck_selection_page.dart';
+import 'api/api_client.dart';
 import 'data/session_store.dart';
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -19,6 +20,9 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _passwordController = TextEditingController();
    String? _usernameError;
   String? _passwordError;
+
+  // True while waiting for the server's answer (the button shows a spinner)
+  bool _loggingIn = false;
 
   // Used to keep the Login button visible above the keyboard
   final GlobalKey _buttonsKey = GlobalKey();
@@ -74,9 +78,22 @@ Future<void> _login() async {
       flushbarPosition: FlushbarPosition.TOP,
     ).show(context);
   } else {
-    // TODO: check the username and PIN with the API.
-    await SessionStore.instance.login(username);
+    // The server checks the username and PIN, and answers with a token
+    final LoginResult result;
+    setState(() => _loggingIn = true);
+    try {
+      result = await ApiClient.instance.login(username, password);
+    } on ApiException catch (e) {
+      // Wrong PIN, locked account, no network...: the server's own words
+      if (mounted) _showMessage(e.message);
+      return;
+    } finally {
+      if (mounted) setState(() => _loggingIn = false);
+    }
+
+    await SessionStore.instance.login(username, result.accessToken);
     if (!mounted) return;
+    // TODO: the change-PIN screen when result.mustChangePin (new drivers).
 
     // A driver with a remembered truck goes straight to the deliveries.
     Navigator.pushReplacement(
@@ -277,7 +294,8 @@ Future<void> _login() async {
                                   child: SizedBox(
                                     height: 50,
                                     child: ElevatedButton(
-                                      onPressed:_login ,
+                                      // Disabled while the server answers
+                                      onPressed: _loggingIn ? null : _login,
                                       style: ElevatedButton.styleFrom(
                                         backgroundColor:
                                             const Color(0xFF0878E5),
@@ -289,7 +307,16 @@ Future<void> _login() async {
                                               BorderRadius.circular(16),
                                         ),
                                       ),
-                                      child: const Row(
+                                      child: _loggingIn
+                                          ? const SizedBox(
+                                              width: 22,
+                                              height: 22,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2.5,
+                                                color: Colors.white,
+                                              ),
+                                            )
+                                          : const Row(
                                         mainAxisAlignment:
                                             MainAxisAlignment.center,
                                         children: [

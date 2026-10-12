@@ -43,6 +43,7 @@ void main() {
   setUp(() async {
     await AppDatabase.open(
         path: inMemoryDatabasePath, factory: databaseFactoryFfi);
+    await AppDatabase.seedTestDeliveries(truck);
     await store.loadForTruck(truck);
     gps = StreamController<Position>.broadcast(); // GPS may restart
     tracking = TrackingService(

@@ -20,6 +20,7 @@ void main() {
   setUp(() async {
     await AppDatabase.open(
         path: inMemoryDatabasePath, factory: databaseFactoryFfi);
+    await AppDatabase.seedTestDeliveries(truck);
     await store.loadForTruck(truck);
   });
   tearDown(AppDatabase.close);
@@ -32,7 +33,7 @@ void main() {
         orderBy: 'id');
   }
 
-  test('test deliveries are loaded for the truck on first run', () {
+  test("the truck's deliveries are loaded from the database", () {
     expect(store.current.length, mockDeliveries.length);
     expect(store.history.length, mockHistory.length);
     expect(store.byKey(first)!.truckPlate, truck);
@@ -116,11 +117,11 @@ void main() {
 
   test('the driver keeps their truck after logout', () async {
     final session = SessionStore.instance;
-    await session.login('drv2041');
+    await session.login('drv2041', 'token-1');
     await session.saveTruckLink(truck, ['TR-1001']);
     await session.logout();
 
-    await session.login('drv2041');
+    await session.login('drv2041', 'token-2');
     final link = await session.truckLink();
     expect(link!.truckPlate, truck);
     expect(link.trailerPlates, ['TR-1001']);
@@ -133,6 +134,7 @@ void main() {
     await AppDatabase.close();
     await databaseFactoryFfi.deleteDatabase(path);
     await AppDatabase.open(path: path, factory: databaseFactoryFfi);
+    await AppDatabase.seedTestDeliveries(truck);
     await store.loadForTruck(truck);
 
     final d = store.byKey(third)!;

@@ -79,6 +79,7 @@ void main() {
 
   test('status changes record the current GPS position', () async {
     final store = DeliveryStore.instance;
+    await AppDatabase.seedTestDeliveries(truck);
     await store.loadForTruck(truck);
     await tracking.start(truck);
     gps.add(fix(52.5545, -1.5260));
@@ -95,6 +96,7 @@ void main() {
 
   test('an old position is not attached to a status change', () async {
     final store = DeliveryStore.instance;
+    await AppDatabase.seedTestDeliveries(truck);
     await store.loadForTruck(truck);
     await tracking.start(truck);
     gps.add(fix(52.5545, -1.5260,

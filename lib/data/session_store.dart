@@ -1,5 +1,6 @@
 import 'package:sqflite/sqflite.dart';
 
+import '../api/api_client.dart';
 import '../mock_vehicles.dart';
 import 'app_database.dart';
 
@@ -24,20 +25,26 @@ class SessionStore {
   /// The logged-in driver, or null.
   String? get username => _username;
 
-  /// Restores the driver saved by the last login (call once at start-up).
+  /// Restores the driver saved by the last login (call once at start-up),
+  /// with their login token, so the app can talk to the server at once.
   Future<void> load() async {
     final rows = await _db.query('session', limit: 1);
     _username = rows.isEmpty ? null : rows.first['username'] as String;
+    ApiClient.instance.token =
+        rows.isEmpty ? null : rows.first['api_token'] as String?;
   }
 
-  // TODO: save the API token returned by the login endpoint.
-  Future<void> login(String username) async {
+  /// Remembers the driver after the server accepted their PIN, with the
+  /// token the server gave (sent with every call from now on).
+  Future<void> login(String username, String token) async {
     _username = username;
+    ApiClient.instance.token = token;
     await _db.insert(
       'session',
       {
         'id': 1,
         'username': username,
+        'api_token': token,
         'logged_in_at': AppDatabase.toDbTime(DateTime.now()),
       },
       conflictAlgorithm: ConflictAlgorithm.replace,
@@ -47,6 +54,7 @@ class SessionStore {
   /// Logs out. The driver's truck link is kept for the next login.
   Future<void> logout() async {
     _username = null;
+    ApiClient.instance.token = null;
     await _db.delete('session');
   }
 
@@ -93,9 +101,26 @@ class SessionStore {
   // VEHICLES
   // ---------------------------------------------------------------
 
-  // TODO: refresh this table from the API.
+  /// Replaces the stored vehicles with the server's list. Throws an
+  /// ApiException when the server cannot be reached (the old list stays).
+  Future<void> refreshVehicles() async {
+    final fresh = await ApiClient.instance.vehicles();
+    await _db.transaction((txn) async {
+      await txn.delete('vehicles');
+      for (final v in fresh) {
+        await txn.insert('vehicles', {
+          'plate': v.plate,
+          'is_truck': v.isTruck ? 1 : 0,
+          'model': v.model,
+          'detail': v.detail,
+          'status': v.status.name,
+        });
+      }
+    });
+  }
+
+  /// The stored trucks (or trailers): the last list received from the server.
   Future<List<Vehicle>> vehicles({required bool trucks}) async {
-    await AppDatabase.seedReferenceData();
     final rows = await _db.query('vehicles',
         where: 'is_truck = ?', whereArgs: [trucks ? 1 : 0], orderBy: 'plate');
     return [

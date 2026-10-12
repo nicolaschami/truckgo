@@ -3,7 +3,11 @@ import 'package:flutter/material.dart';
 
 import 'delivery_detail_page.dart';
 import 'delivery_flow_page.dart';
+import 'api/api_client.dart';
+import 'api/delivery_sync.dart';
+import 'data/session_store.dart';
 import 'delivery_store.dart';
+import 'login_page.dart';
 import 'mock_deliveries.dart';
 import 'tracking/geofence_service.dart';
 import 'tracking/test_data_export.dart';
@@ -34,21 +38,46 @@ class _DeliveriesPageState extends State<DeliveriesPage> {
 
   final _tracking = TrackingService.instance;
 
+  final _sync = DeliverySync.instance;
+
   @override
   void initState() {
     super.initState();
     _store.addListener(_onStoreChanged);
-    _store.loadForTruck(widget.truckPlate).whenComplete(() {
+    _sync.lastSuccess.addListener(_onStoreChanged);
+    _sync.lastError.addListener(_onSyncError);
+
+    // What the phone already has shows at once; then the server's full list
+    // (the spinner stays only if the phone had nothing yet)
+    final truck = widget.truckPlate;
+    _store.loadForTruck(truck).whenComplete(() async {
+      if (mounted && _store.current.isNotEmpty) setState(() => _loading = false);
+      if (truck != null) await _sync.start(truck);
       if (mounted) setState(() => _loading = false);
     });
 
     // GPS runs while this truck's deliveries are open (also in background)
     _tracking.addListener(_onStoreChanged);
-    final truck = widget.truckPlate;
     if (truck != null) {
       _tracking.start(truck);
       GeofenceService.instance.start(); // plant and site zones
     }
+  }
+
+  // The server no longer accepts the login (expired): log in again.
+  // Other errors (no network) only show on the list: the next try is soon.
+  Future<void> _onSyncError() async {
+    if (_sync.lastError.value?.kind != ApiErrorKind.unauthorized) {
+      _onStoreChanged();
+      return;
+    }
+    _sync.stop();
+    await SessionStore.instance.logout();
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (context) => const LoginPage()),
+      (route) => false,
+    );
   }
 
   // Back to truck selection, which keeps the remembered truck selected.
@@ -68,22 +97,14 @@ class _DeliveriesPageState extends State<DeliveriesPage> {
     }
   }
 
-  Future<void> _resetTestData() async {
-    await _store.resetTestData();
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Test deliveries reloaded'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
   @override
   void dispose() {
     _store.removeListener(_onStoreChanged);
+    _sync.lastSuccess.removeListener(_onStoreChanged);
+    _sync.lastError.removeListener(_onSyncError);
     _tracking.removeListener(_onStoreChanged);
     // Back to truck selection or logout: stop following the truck
+    _sync.stop();
     GeofenceService.instance.stop();
     _tracking.stop();
     super.dispose();
@@ -186,11 +207,6 @@ class _DeliveriesPageState extends State<DeliveriesPage> {
                         icon: const Icon(Icons.share, color: Colors.white),
                         onPressed: _shareTestData,
                       ),
-                      IconButton(
-                        tooltip: 'Reset test data',
-                        icon: const Icon(Icons.restart_alt, color: Colors.white),
-                        onPressed: _resetTestData,
-                      ),
                     ],
                     // Tap the truck to change it
                     Material(
@@ -268,6 +284,8 @@ class _DeliveriesPageState extends State<DeliveriesPage> {
                           tracking: _tracking,
                           onRetry: _retryTracking,
                         ),
+                        const SizedBox(height: 4),
+                        _SyncIndicator(sync: _sync),
                       ],
                     ],
                   ),
@@ -304,31 +322,45 @@ class _DeliveriesPageState extends State<DeliveriesPage> {
                 ),
               ),
 
-              // LIST
+              // LIST (pull it down to ask the server at once)
               Expanded(
                 child: _loading
                     ? const Center(
                         child: CircularProgressIndicator(color: Colors.white),
                       )
-                    : list.isEmpty
-                    ? _EmptyState(
-                        message: hasTruck
-                            ? 'No deliveries here yet.'
-                            : 'Select a truck to see your deliveries.',
-                      )
-                    : ListView(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                        children: [
-                          for (var i = 0; i < list.length; i++) ...[
-                            if (i == 1 && !_showHistory) const _PlannedDivider(),
-                            _DeliveryCard(
-                              delivery: list[i],
-                              tag: _tagFor(list[i], i),
-                              onTap: () => _open(list[i]),
-                            ),
-                            const SizedBox(height: 10),
-                          ],
-                        ],
+                    : RefreshIndicator(
+                        onRefresh: _sync.syncNow,
+                        child: list.isEmpty
+                            // Scrollable even when empty, so it can be pulled
+                            ? LayoutBuilder(
+                                builder: (context, box) => SingleChildScrollView(
+                                  physics: const AlwaysScrollableScrollPhysics(),
+                                  child: SizedBox(
+                                    height: box.maxHeight,
+                                    child: _EmptyState(
+                                      message: hasTruck
+                                          ? 'No deliveries here yet.'
+                                          : 'Select a truck to see your deliveries.',
+                                    ),
+                                  ),
+                                ),
+                              )
+                            : ListView(
+                                physics: const AlwaysScrollableScrollPhysics(),
+                                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                                children: [
+                                  for (var i = 0; i < list.length; i++) ...[
+                                    if (i == 1 && !_showHistory)
+                                      const _PlannedDivider(),
+                                    _DeliveryCard(
+                                      delivery: list[i],
+                                      tag: _tagFor(list[i], i),
+                                      onTap: () => _open(list[i]),
+                                    ),
+                                    const SizedBox(height: 10),
+                                  ],
+                                ],
+                              ),
                       ),
               ),
 
@@ -635,6 +667,46 @@ class _GpsIndicator extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// When the deliveries were last checked with the server, in the same style
+/// as the GPS line: green = up to date, orange = offline (showing what the
+/// phone has; the next try is within a minute).
+class _SyncIndicator extends StatelessWidget {
+  const _SyncIndicator({required this.sync});
+
+  final DeliverySync sync;
+
+  @override
+  Widget build(BuildContext context) {
+    final last = sync.lastSuccess.value;
+    final error = sync.lastError.value;
+    final (Color color, IconData icon, String text) = switch (error) {
+      null when last == null => (Colors.white54, Icons.sync, 'Checking for deliveries…'),
+      null => (const Color(0xFF69F0AE), Icons.cloud_done_outlined,
+          'Up to date  •  ${fmtTime(last!)}'),
+      _ => (const Color(0xFFFFD180), Icons.cloud_off_outlined,
+          last == null ? 'Offline – ${error.message}' : 'Offline  •  last update ${fmtTime(last)}'),
+    };
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 14, color: color),
+        const SizedBox(width: 6),
+        Flexible(
+          child: Text(
+            text,
+            style: TextStyle(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
